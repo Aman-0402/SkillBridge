@@ -131,6 +131,45 @@ class AnalyticsViewSet(viewsets.ViewSet):
             'user_growth': growth
         })
 
+    @action(detail=False, methods=['get'])
+    def monthly_payments(self, request):
+        # Only admin users can access
+        if not request.user.is_staff or request.user.role != 'admin':
+            return Response(
+                {'detail': 'Only admin users can access this'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        from .analytics import get_monthly_payments
+        data = get_monthly_payments()
+        return Response(data)
+
+    @action(detail=False, methods=['get'])
+    def user_growth_chart(self, request):
+        # Only admin users can access
+        if not request.user.is_staff or request.user.role != 'admin':
+            return Response(
+                {'detail': 'Only admin users can access this'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        from .analytics import get_user_growth_chart
+        data = get_user_growth_chart()
+        return Response(data)
+
+    @action(detail=False, methods=['get'])
+    def recent_transactions(self, request):
+        # Only admin users can access
+        if not request.user.is_staff or request.user.role != 'admin':
+            return Response(
+                {'detail': 'Only admin users can access this'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        from .analytics import get_recent_transactions
+        data = get_recent_transactions()
+        return Response(data)
+
 
 class AdminViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated, IsAdmin]

@@ -116,3 +116,91 @@ def get_user_growth():
             'consultants': User.objects.filter(role='consultant', date_joined__gte=last_30_days).count(),
         }
     }
+
+def get_monthly_payments():
+    """Get monthly payment statistics for last 12 months"""
+    from django.db.models.functions import TruncMonth
+
+    now = timezone.now()
+    last_12_months = now - timedelta(days=365)
+
+    monthly_data = Payment.objects.filter(
+        status='completed',
+        created_at__gte=last_12_months
+    ).annotate(
+        month=TruncMonth('created_at')
+    ).values('month').annotate(
+        total=Sum('amount')
+    ).order_by('month')
+
+    # Format data for chart
+    chart_data = []
+    for item in monthly_data:
+        if item['month']:
+            month_str = item['month'].strftime('%b %Y')
+            chart_data.append({
+                'month': month_str,
+                'amount': float(item['total'] or 0)
+            })
+
+    # Fill missing months with 0
+    if not chart_data:
+        # Return last 12 months even if no data
+        for i in range(12):
+            date = now - timedelta(days=30*i)
+            month_str = date.strftime('%b %Y')
+            chart_data.insert(0, {'month': month_str, 'amount': 0})
+
+    return chart_data
+
+def get_user_growth_chart():
+    """Get user growth statistics for last 12 months"""
+    from django.db.models.functions import TruncWeek
+
+    now = timezone.now()
+    last_12_months = now - timedelta(days=365)
+
+    weekly_data = User.objects.filter(
+        date_joined__gte=last_12_months
+    ).annotate(
+        week=TruncWeek('date_joined')
+    ).values('week').annotate(
+        count=Count('id')
+    ).order_by('week')
+
+    # Format data for chart
+    chart_data = []
+    cumulative_count = 0
+
+    for item in weekly_data:
+        if item['week']:
+            week_str = item['week'].strftime('%b %d')
+            cumulative_count += item['count']
+            chart_data.append({
+                'week': week_str,
+                'new_users': item['count'],
+                'total_users': User.objects.filter(date_joined__lte=item['week']).count()
+            })
+
+    return chart_data
+
+def get_recent_transactions():
+    """Get recent completed transactions"""
+    transactions = Payment.objects.filter(
+        status='completed'
+    ).select_related('proposal__freelancer', 'proposal__project__client').order_by('-created_at')[:20]
+
+    activity_data = []
+    for transaction in transactions:
+        activity_data.append({
+            'id': transaction.id,
+            'amount': float(transaction.amount),
+            'date': transaction.created_at.strftime('%b %d, %Y'),
+            'time': transaction.created_at.strftime('%I:%M %p'),
+            'freelancer': transaction.proposal.freelancer.username if transaction.proposal.freelancer else 'Unknown',
+            'project': transaction.proposal.project.title if transaction.proposal.project else 'Unknown',
+            'client': transaction.proposal.project.client.username if transaction.proposal.project else 'Unknown',
+            'status': transaction.status
+        })
+
+    return activity_data

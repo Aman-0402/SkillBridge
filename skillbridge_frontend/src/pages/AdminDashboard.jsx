@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from 'recharts'
+import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line } from 'recharts'
 import api from '../services/api'
 import { useAuth } from '../hooks/useAuth'
 
 export default function AdminDashboard() {
   const { user } = useAuth()
   const [stats, setStats] = useState(null)
+  const [monthlyData, setMonthlyData] = useState([])
+  const [userGrowthData, setUserGrowthData] = useState([])
+  const [recentTransactions, setRecentTransactions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -18,9 +21,20 @@ export default function AdminDashboard() {
 
   const fetchStats = async () => {
     try {
-      const response = await api.get('/chat/analytics/admin_stats/')
-      console.log('Admin stats response:', response.data)
-      setStats(response.data)
+      const [statsRes, monthlyRes, growthRes, transactionsRes] = await Promise.all([
+        api.get('/chat/analytics/admin_stats/'),
+        api.get('/chat/analytics/monthly_payments/'),
+        api.get('/chat/analytics/user_growth_chart/'),
+        api.get('/chat/analytics/recent_transactions/')
+      ])
+      console.log('Admin stats response:', statsRes.data)
+      console.log('Monthly data response:', monthlyRes.data)
+      console.log('User growth response:', growthRes.data)
+      console.log('Recent transactions response:', transactionsRes.data)
+      setStats(statsRes.data)
+      setMonthlyData(monthlyRes.data || [])
+      setUserGrowthData(growthRes.data || [])
+      setRecentTransactions(transactionsRes.data || [])
       setError(null)
     } catch (error) {
       const errorMsg = error.response?.data?.detail || error.message || 'Unknown error'
@@ -204,6 +218,41 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* Monthly Revenue Bar Chart */}
+        <div className="bg-white rounded-lg shadow p-6 mb-8">
+          <h3 className="text-xl font-bold text-gray-900 mb-6">Monthly Revenue (Last 12 Months)</h3>
+          <div className="flex justify-center">
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" angle={-45} textAnchor="end" height={80} />
+                <YAxis />
+                <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
+                <Bar dataKey="amount" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* User Growth Line Chart */}
+        <div className="bg-white rounded-lg shadow p-6 mb-8">
+          <h3 className="text-xl font-bold text-gray-900 mb-6">User Growth Trends (Last 12 Months)</h3>
+          <div className="flex justify-center">
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={userGrowthData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="week" angle={-45} textAnchor="end" height={80} />
+                <YAxis yAxisId="left" label={{ value: 'Total Users', angle: -90, position: 'insideLeft' }} />
+                <YAxis yAxisId="right" orientation="right" label={{ value: 'New Users', angle: 90, position: 'insideRight' }} />
+                <Tooltip />
+                <Legend />
+                <Line yAxisId="left" type="monotone" dataKey="total_users" stroke="#3b82f6" strokeWidth={2} name="Total Users" dot={false} />
+                <Line yAxisId="right" type="monotone" dataKey="new_users" stroke="#10b981" strokeWidth={2} name="New Users This Week" dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
         {/* Project Stats */}
         <div className="bg-white rounded-lg shadow p-6 mb-8">
           <h3 className="text-xl font-bold text-gray-900 mb-4">Project Status</h3>
@@ -256,6 +305,45 @@ export default function AdminDashboard() {
               <p className="text-gray-600 text-sm">New Users This Week</p>
               <p className="text-3xl font-bold text-red-900">{userGrowth.new_users_this_week}</p>
             </div>
+          </div>
+        </div>
+
+        {/* Recent Activity Timeline */}
+        <div className="bg-white rounded-lg shadow p-6 mt-8">
+          <h3 className="text-xl font-bold text-gray-900 mb-6">Recent Transactions</h3>
+          <div className="space-y-4">
+            {recentTransactions.length > 0 ? (
+              recentTransactions.map((transaction, idx) => (
+                <div key={idx} className="flex items-start gap-4 pb-4 border-b last:border-b-0">
+                  <div className="flex-shrink-0">
+                    <div className="flex items-center justify-center h-10 w-10 rounded-full bg-green-100">
+                      <span className="text-green-600 font-bold">$</span>
+                    </div>
+                  </div>
+                  <div className="flex-grow min-w-0">
+                    <p className="text-sm font-semibold text-gray-900">
+                      Payment of ${transaction.amount.toFixed(2)}
+                    </p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      From <span className="font-semibold">{transaction.client}</span> to <span className="font-semibold">{transaction.freelancer}</span>
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Project: {transaction.project}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {transaction.date} at {transaction.time}
+                    </p>
+                  </div>
+                  <div className="flex-shrink-0">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      ✓ Completed
+                    </span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-500">No recent transactions</div>
+            )}
           </div>
         </div>
       </div>
