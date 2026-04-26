@@ -11,6 +11,9 @@ import CreateProject from './pages/CreateProject'
 import Jobs from './pages/Jobs'
 import JobDetail from './pages/JobDetail'
 import PostJob from './pages/PostJob'
+import Consultants from './pages/Consultants'
+import ConsultantProfile from './pages/ConsultantProfile'
+import ManageAvailability from './pages/ManageAvailability'
 
 function App() {
   return (
@@ -81,6 +84,30 @@ function App() {
             element={
               <ProtectedRoute>
                 <PostJob />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/consultants"
+            element={
+              <ProtectedRoute>
+                <Consultants />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/consultants/:username"
+            element={
+              <ProtectedRoute>
+                <ConsultantProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/manage-availability"
+            element={
+              <ProtectedRoute>
+                <ManageAvailability />
               </ProtectedRoute>
             }
           />

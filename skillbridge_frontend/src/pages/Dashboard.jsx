@@ -35,23 +35,29 @@ export default function Dashboard() {
 
           <div className="mt-8">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Links</h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <a href="/profile" className="p-4 bg-indigo-50 rounded-lg border border-indigo-200 hover:shadow-lg transition">
                 <h4 className="font-semibold text-indigo-900">Profile</h4>
-                <p className="text-sm text-gray-600">View and edit your profile</p>
+                <p className="text-sm text-gray-600">View and edit</p>
               </a>
               <a href="/projects" className="p-4 bg-green-50 rounded-lg border border-green-200 hover:shadow-lg transition">
                 <h4 className="font-semibold text-green-900">Projects</h4>
-                <p className="text-sm text-gray-600">Browse available projects</p>
+                <p className="text-sm text-gray-600">Freelance work</p>
               </a>
               <a href="/jobs" className="p-4 bg-blue-50 rounded-lg border border-blue-200 hover:shadow-lg transition">
                 <h4 className="font-semibold text-blue-900">Jobs</h4>
-                <p className="text-sm text-gray-600">Explore job opportunities</p>
+                <p className="text-sm text-gray-600">Job listings</p>
               </a>
-              <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-                <h4 className="font-semibold text-purple-900">Messages</h4>
-                <p className="text-sm text-gray-600">Coming soon</p>
-              </div>
+              <a href="/consultants" className="p-4 bg-yellow-50 rounded-lg border border-yellow-200 hover:shadow-lg transition">
+                <h4 className="font-semibold text-yellow-900">Consultants</h4>
+                <p className="text-sm text-gray-600">Book sessions</p>
+              </a>
+              {user?.role === 'consultant' && (
+                <a href="/manage-availability" className="p-4 bg-purple-50 rounded-lg border border-purple-200 hover:shadow-lg transition">
+                  <h4 className="font-semibold text-purple-900">Availability</h4>
+                  <p className="text-sm text-gray-600">Manage hours</p>
+                </a>
+              )}
             </div>
           </div>
         </div>
