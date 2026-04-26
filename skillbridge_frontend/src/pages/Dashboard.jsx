@@ -17,6 +17,7 @@ export default function Dashboard() {
           <h1 className="text-2xl font-bold text-indigo-600">SkillBridge</h1>
           <div className="space-x-4">
             <a href="/profile" className="text-gray-600 hover:text-gray-900">Profile</a>
+            <a href="/chat" className="text-gray-600 hover:text-gray-900">Messages</a>
             <button
               onClick={handleLogout}
               className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded"

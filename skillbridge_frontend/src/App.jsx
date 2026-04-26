@@ -14,6 +14,7 @@ import PostJob from './pages/PostJob'
 import Consultants from './pages/Consultants'
 import ConsultantProfile from './pages/ConsultantProfile'
 import ManageAvailability from './pages/ManageAvailability'
+import Chat from './pages/Chat'
 
 function App() {
   return (
@@ -108,6 +109,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <ManageAvailability />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/chat"
+            element={
+              <ProtectedRoute>
+                <Chat />
               </ProtectedRoute>
             }
           />
