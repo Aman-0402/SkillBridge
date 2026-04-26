@@ -10,6 +10,7 @@ export default function AdminDashboard() {
   const [monthlyData, setMonthlyData] = useState([])
   const [userGrowthData, setUserGrowthData] = useState([])
   const [recentTransactions, setRecentTransactions] = useState([])
+  const [kpis, setKpis] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -21,20 +22,23 @@ export default function AdminDashboard() {
 
   const fetchStats = async () => {
     try {
-      const [statsRes, monthlyRes, growthRes, transactionsRes] = await Promise.all([
+      const [statsRes, monthlyRes, growthRes, transactionsRes, kpisRes] = await Promise.all([
         api.get('/chat/analytics/admin_stats/'),
         api.get('/chat/analytics/monthly_payments/'),
         api.get('/chat/analytics/user_growth_chart/'),
-        api.get('/chat/analytics/recent_transactions/')
+        api.get('/chat/analytics/recent_transactions/'),
+        api.get('/chat/analytics/kpis/')
       ])
       console.log('Admin stats response:', statsRes.data)
       console.log('Monthly data response:', monthlyRes.data)
       console.log('User growth response:', growthRes.data)
       console.log('Recent transactions response:', transactionsRes.data)
+      console.log('KPIs response:', kpisRes.data)
       setStats(statsRes.data)
       setMonthlyData(monthlyRes.data || [])
       setUserGrowthData(growthRes.data || [])
       setRecentTransactions(transactionsRes.data || [])
+      setKpis(kpisRes.data)
       setError(null)
     } catch (error) {
       const errorMsg = error.response?.data?.detail || error.message || 'Unknown error'
@@ -101,6 +105,90 @@ export default function AdminDashboard() {
           <StatCard title="Total Jobs" value={platformStats.total_jobs} icon="💼" />
           <StatCard title="Total Payments" value={`$${platformStats.total_payments}`} icon="💰" />
         </div>
+
+        {/* KPI Cards */}
+        {kpis && (
+          <div className="bg-white rounded-lg shadow p-6 mb-8">
+            <h3 className="text-2xl font-bold text-gray-900 mb-6">Key Performance Indicators</h3>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+              <div className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border-l-4 border-blue-500">
+                <p className="text-gray-600 text-sm font-semibold mb-1">Conversion Rate</p>
+                <p className="text-4xl font-bold text-blue-900">{kpis.conversion_rate}%</p>
+                <p className="text-xs text-blue-600 mt-2">Proposals accepted</p>
+              </div>
+              <div className="p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-lg border-l-4 border-green-500">
+                <p className="text-gray-600 text-sm font-semibold mb-1">Avg Project Value</p>
+                <p className="text-4xl font-bold text-green-900">${kpis.avg_project_value.toFixed(0)}</p>
+                <p className="text-xs text-green-600 mt-2">Average budget</p>
+              </div>
+              <div className="p-6 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border-l-4 border-purple-500">
+                <p className="text-gray-600 text-sm font-semibold mb-1">Platform Health</p>
+                <p className="text-4xl font-bold text-purple-900">{kpis.platform_health_score}%</p>
+                <p className="text-xs text-purple-600 mt-2">Overall score</p>
+              </div>
+              <div className="p-6 bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg border-l-4 border-orange-500">
+                <p className="text-gray-600 text-sm font-semibold mb-1">Total Revenue</p>
+                <p className="text-4xl font-bold text-orange-900">${kpis.revenue_split.total.toFixed(0)}</p>
+                <p className="text-xs text-orange-600 mt-2">All sources</p>
+              </div>
+            </div>
+
+            {/* Revenue Split */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-gray-700 text-sm font-semibold mb-1">Project Revenue</p>
+                <p className="text-3xl font-bold text-blue-900">${kpis.revenue_split.projects.toFixed(2)}</p>
+              </div>
+              <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                <p className="text-gray-700 text-sm font-semibold mb-1">Consultation Revenue</p>
+                <p className="text-3xl font-bold text-emerald-900">${kpis.revenue_split.consultations.toFixed(2)}</p>
+              </div>
+            </div>
+
+            {/* Top Performers */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Top Freelancers */}
+              <div>
+                <h4 className="text-lg font-bold text-gray-900 mb-4">Top Freelancers</h4>
+                <div className="space-y-3">
+                  {kpis.top_freelancers.length > 0 ? (
+                    kpis.top_freelancers.map((freelancer, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-3 bg-purple-50 rounded-lg border border-purple-200">
+                        <div>
+                          <p className="font-semibold text-gray-900">{idx + 1}. {freelancer.username}</p>
+                          <p className="text-xs text-gray-600">{freelancer.projects_completed} projects completed</p>
+                        </div>
+                        <p className="text-lg font-bold text-purple-900">${freelancer.earned.toFixed(0)}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-gray-500 text-sm">No data available</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Top Consultants */}
+              <div>
+                <h4 className="text-lg font-bold text-gray-900 mb-4">Top Consultants</h4>
+                <div className="space-y-3">
+                  {kpis.top_consultants.length > 0 ? (
+                    kpis.top_consultants.map((consultant, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
+                        <div>
+                          <p className="font-semibold text-gray-900">{idx + 1}. {consultant.username}</p>
+                          <p className="text-xs text-gray-600">{consultant.sessions_completed} sessions completed</p>
+                        </div>
+                        <p className="text-lg font-bold text-orange-900">${consultant.earned.toFixed(0)}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-gray-500 text-sm">No data available</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* User Role Breakdown - Combined View */}
         <div className="bg-white rounded-lg shadow p-6 mb-8">
