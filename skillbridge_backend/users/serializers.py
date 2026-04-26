@@ -1,5 +1,17 @@
 from rest_framework import serializers
-from .models import User
+from .models import User, Skill, Experience
+
+class SkillSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Skill
+        fields = ['id', 'name', 'proficiency', 'endorsed', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+class ExperienceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Experience
+        fields = ['id', 'title', 'company', 'description', 'start_date', 'end_date', 'is_current', 'created_at']
+        read_only_fields = ['id', 'created_at']
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -29,7 +41,10 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
 
 class ProfileSerializer(serializers.ModelSerializer):
+    skills = SkillSerializer(many=True, read_only=True)
+    experiences = ExperienceSerializer(many=True, read_only=True)
+
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'bio', 'profile_image', 'hourly_rate', 'is_verified', 'created_at']
-        read_only_fields = ['id', 'created_at', 'is_verified']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'bio', 'profile_image', 'hourly_rate', 'location', 'portfolio_url', 'is_verified', 'skills', 'experiences', 'created_at']
+        read_only_fields = ['id', 'created_at', 'is_verified', 'skills', 'experiences']
