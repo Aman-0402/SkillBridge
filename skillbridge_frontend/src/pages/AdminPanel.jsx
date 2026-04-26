@@ -142,8 +142,10 @@ export default function AdminPanel() {
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-red-600">Admin Control Panel</h1>
-          <Link to="/dashboard" className="text-gray-600 hover:text-gray-900">Back to Dashboard</Link>
+          <div className="flex items-center gap-4">
+            <Link to="/dashboard" className="text-gray-600 hover:text-gray-900 text-xl">← Back</Link>
+            <h1 className="text-2xl font-bold text-red-600">Admin Control Panel</h1>
+          </div>
         </div>
       </nav>
 

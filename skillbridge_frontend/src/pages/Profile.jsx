@@ -3,11 +3,17 @@ import { useAuth } from '../hooks/useAuth'
 import api from '../services/api'
 
 export default function Profile() {
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
   const [profile, setProfile] = useState(null)
   const [editing, setEditing] = useState(false)
   const [formData, setFormData] = useState({})
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [success, setSuccess] = useState(null)
+  const [showChangePassword, setShowChangePassword] = useState(false)
+  const [passwordData, setPasswordData] = useState({ old_password: '', new_password: '', confirm_password: '' })
+  const [profileImage, setProfileImage] = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
 
   useEffect(() => {
     fetchProfile()
@@ -16,11 +22,16 @@ export default function Profile() {
   const fetchProfile = async () => {
     try {
       const response = await api.get('/auth/profile/')
-      console.log('Profile loaded:', response.data)
       setProfile(response.data)
-      setFormData(response.data)
+      setFormData({
+        first_name: response.data.first_name || '',
+        last_name: response.data.last_name || ''
+      })
+      if (response.data.profile_image) {
+        setImagePreview(response.data.profile_image)
+      }
     } catch (error) {
-      console.error('Failed to fetch profile:', error.response || error.message)
+      setError('Failed to fetch profile')
     } finally {
       setLoading(false)
     }
@@ -31,14 +42,78 @@ export default function Profile() {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    // Check file size (200kb = 200000 bytes)
+    if (file.size > 200000) {
+      setError('Image size must be less than 200KB')
+      return
+    }
+
+    // Check if file is image
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload an image file')
+      return
+    }
+
+    setProfileImage(file)
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      setImagePreview(e.target.result)
+    }
+    reader.readAsDataURL(file)
+    setError(null)
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      const response = await api.put('/auth/profile/', formData)
+      const formDataToSend = new FormData()
+      formDataToSend.append('first_name', formData.first_name)
+      formDataToSend.append('last_name', formData.last_name)
+      if (profileImage) {
+        formDataToSend.append('profile_image', profileImage)
+      }
+
+      const response = await api.put('/auth/profile/', formDataToSend, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
       setProfile(response.data)
       setEditing(false)
+      setProfileImage(null)
+      setSuccess('Profile updated successfully!')
+      setTimeout(() => setSuccess(null), 3000)
     } catch (error) {
-      console.error('Failed to update profile:', error)
+      setError('Failed to update profile')
+    }
+  }
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault()
+
+    if (passwordData.new_password !== passwordData.confirm_password) {
+      setError('Passwords do not match')
+      return
+    }
+
+    if (passwordData.new_password.length < 6) {
+      setError('Password must be at least 6 characters')
+      return
+    }
+
+    try {
+      await api.post('/auth/change-password/', {
+        old_password: passwordData.old_password,
+        new_password: passwordData.new_password
+      })
+      setPasswordData({ old_password: '', new_password: '', confirm_password: '' })
+      setShowChangePassword(false)
+      setSuccess('Password changed successfully!')
+      setTimeout(() => setSuccess(null), 3000)
+    } catch (error) {
+      setError(error.response?.data?.detail || 'Failed to change password')
     }
   }
 
@@ -54,372 +129,198 @@ export default function Profile() {
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-indigo-600">SkillBridge</h1>
-          <a href="/dashboard" className="text-gray-600 hover:text-gray-900">Dashboard</a>
+          <div className="flex items-center gap-4">
+            <a href="/dashboard" className="text-gray-600 hover:text-gray-900 text-xl">← Back</a>
+            <h1 className="text-2xl font-bold text-indigo-600">SkillBridge</h1>
+          </div>
         </div>
       </nav>
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <div className="flex justify-between items-start mb-6">
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        {error && <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">{error}</div>}
+        {success && <div className="mb-4 p-4 bg-green-100 text-green-700 rounded-lg">{success}</div>}
+
+        <div className="bg-white rounded-lg shadow p-8">
+          <div className="flex justify-between items-start mb-8">
             <h2 className="text-2xl font-bold text-gray-900">My Profile</h2>
-            <button
-              onClick={() => setEditing(!editing)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded"
-            >
-              {editing ? 'Cancel' : 'Edit Profile'}
-            </button>
+            {!editing && (
+              <div className="space-x-2">
+                <button
+                  onClick={() => setEditing(true)}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded"
+                >
+                  Edit Profile
+                </button>
+                <button
+                  onClick={() => setShowChangePassword(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+                >
+                  Change Password
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Profile Photo Section */}
+          <div className="mb-8 flex flex-col items-center">
+            {imagePreview ? (
+              <img
+                src={imagePreview}
+                alt="Profile"
+                className="w-32 h-32 rounded-full object-cover border-4 border-indigo-200 mb-4"
+              />
+            ) : (
+              <div className="w-32 h-32 rounded-full bg-gray-300 flex items-center justify-center border-4 border-gray-300 mb-4">
+                <span className="text-4xl">👤</span>
+              </div>
+            )}
+            {editing && (
+              <label className="cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
+                />
+                <span className="text-sm text-indigo-600 hover:text-indigo-700 underline">
+                  Edit
+                </span>
+              </label>
+            )}
           </div>
 
           {editing ? (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">First Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
                   <input
                     type="text"
                     name="first_name"
                     value={formData.first_name || ''}
                     onChange={handleChange}
-                    className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Last Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
                   <input
                     type="text"
                     name="last_name"
                     value={formData.last_name || ''}
                     onChange={handleChange}
-                    className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Bio</label>
-                <textarea
-                  name="bio"
-                  value={formData.bio || ''}
-                  onChange={handleChange}
-                  rows="4"
-                  className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg"
-                />
+              <div className="pt-4 space-x-4">
+                <button
+                  type="submit"
+                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded"
+                >
+                  Save Changes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditing(false)}
+                  className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded"
+                >
+                  Cancel
+                </button>
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Location</label>
-                  <input
-                    type="text"
-                    name="location"
-                    value={formData.location || ''}
-                    onChange={handleChange}
-                    className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Hourly Rate</label>
-                  <input
-                    type="number"
-                    name="hourly_rate"
-                    value={formData.hourly_rate || ''}
-                    onChange={handleChange}
-                    step="0.01"
-                    className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Portfolio URL</label>
-                <input
-                  type="url"
-                  name="portfolio_url"
-                  value={formData.portfolio_url || ''}
-                  onChange={handleChange}
-                  className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded font-semibold"
-              >
-                Save Changes
-              </button>
             </form>
           ) : (
             <div className="space-y-4">
-              <div>
-                <p className="text-gray-600 text-sm">Username</p>
-                <p className="text-gray-900 font-semibold">{profile?.username}</p>
-              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-gray-600 text-sm">First Name</p>
-                  <p className="text-gray-900 font-semibold">{profile?.first_name || 'Not set'}</p>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">Username</label>
+                  <p className="text-lg font-semibold text-gray-900">{profile.username}</p>
                 </div>
                 <div>
-                  <p className="text-gray-600 text-sm">Last Name</p>
-                  <p className="text-gray-900 font-semibold">{profile?.last_name || 'Not set'}</p>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">Email</label>
+                  <p className="text-lg font-semibold text-gray-900">{profile.email}</p>
                 </div>
               </div>
-              <div>
-                <p className="text-gray-600 text-sm">Role</p>
-                <p className="text-gray-900 font-semibold capitalize">{profile?.role}</p>
-              </div>
-              <div>
-                <p className="text-gray-600 text-sm">Bio</p>
-                <p className="text-gray-900">{profile?.bio || 'No bio added'}</p>
-              </div>
-              <div>
-                <p className="text-gray-600 text-sm">Location</p>
-                <p className="text-gray-900">{profile?.location || 'Not set'}</p>
-              </div>
-              {profile?.hourly_rate && (
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-gray-600 text-sm">Hourly Rate</p>
-                  <p className="text-gray-900 font-semibold">${profile.hourly_rate}/hr</p>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">First Name</label>
+                  <p className="text-lg font-semibold text-gray-900">{profile.first_name || '-'}</p>
                 </div>
-              )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">Last Name</label>
+                  <p className="text-lg font-semibold text-gray-900">{profile.last_name || '-'}</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">Role</label>
+                <p className="text-lg font-semibold text-indigo-600 capitalize">{profile.role}</p>
+              </div>
             </div>
           )}
         </div>
 
-        <SkillsSection userId={user?.id} />
-        <ExperienceSection userId={user?.id} />
-      </div>
-    </div>
-  )
-}
+        {/* Change Password Modal */}
+        {showChangePassword && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
+              <h3 className="text-2xl font-bold text-gray-900 mb-6">Change Password</h3>
 
-function SkillsSection({ userId }) {
-  const [skills, setSkills] = useState([])
-  const [newSkill, setNewSkill] = useState({ name: '', proficiency: 'intermediate' })
-  const [loading, setLoading] = useState(true)
+              <form onSubmit={handlePasswordChange} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
+                  <input
+                    type="password"
+                    value={passwordData.old_password}
+                    onChange={(e) => setPasswordData({ ...passwordData, old_password: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                    required
+                  />
+                </div>
 
-  useEffect(() => {
-    fetchSkills()
-  }, [])
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                  <input
+                    type="password"
+                    value={passwordData.new_password}
+                    onChange={(e) => setPasswordData({ ...passwordData, new_password: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                    required
+                  />
+                </div>
 
-  const fetchSkills = async () => {
-    try {
-      const response = await api.get('/auth/skills/')
-      console.log('Skills response:', response.data)
-      const skillsArray = Array.isArray(response.data) ? response.data : response.data.results || []
-      setSkills(skillsArray)
-    } catch (error) {
-      console.error('Failed to fetch skills:', error)
-      setSkills([])
-    } finally {
-      setLoading(false)
-    }
-  }
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
+                  <input
+                    type="password"
+                    value={passwordData.confirm_password}
+                    onChange={(e) => setPasswordData({ ...passwordData, confirm_password: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                    required
+                  />
+                </div>
 
-  const addSkill = async (e) => {
-    e.preventDefault()
-    try {
-      const response = await api.post('/auth/skills/', newSkill)
-      setSkills([...skills, response.data])
-      setNewSkill({ name: '', proficiency: 'intermediate' })
-    } catch (error) {
-      console.error('Failed to add skill:', error)
-    }
-  }
-
-  const deleteSkill = async (skillId) => {
-    try {
-      await api.delete(`/auth/skills/${skillId}/`)
-      setSkills(skills.filter(s => s.id !== skillId))
-    } catch (error) {
-      console.error('Failed to delete skill:', error)
-    }
-  }
-
-  return (
-    <div className="bg-white rounded-lg shadow p-6 mb-6">
-      <h3 className="text-xl font-bold text-gray-900 mb-4">Skills</h3>
-
-      <form onSubmit={addSkill} className="mb-6 p-4 bg-gray-50 rounded-lg">
-        <div className="grid grid-cols-3 gap-4">
-          <input
-            type="text"
-            placeholder="Add a skill"
-            value={newSkill.name}
-            onChange={(e) => setNewSkill({ ...newSkill, name: e.target.value })}
-            className="px-4 py-2 border border-gray-300 rounded-lg"
-          />
-          <select
-            value={newSkill.proficiency}
-            onChange={(e) => setNewSkill({ ...newSkill, proficiency: e.target.value })}
-            className="px-4 py-2 border border-gray-300 rounded-lg"
-          >
-            <option value="beginner">Beginner</option>
-            <option value="intermediate">Intermediate</option>
-            <option value="expert">Expert</option>
-          </select>
-          <button
-            type="submit"
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg"
-          >
-            Add Skill
-          </button>
-        </div>
-      </form>
-
-      <div className="space-y-2">
-        {skills.map(skill => (
-          <div key={skill.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-            <div>
-              <p className="font-semibold text-gray-900">{skill.name}</p>
-              <p className="text-sm text-gray-600 capitalize">{skill.proficiency}</p>
+                <div className="pt-4 space-x-4">
+                  <button
+                    type="submit"
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded"
+                  >
+                    Change Password
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowChangePassword(false)}
+                    className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
             </div>
-            <button
-              onClick={() => deleteSkill(skill.id)}
-              className="text-red-600 hover:text-red-700 text-sm"
-            >
-              Delete
-            </button>
           </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function ExperienceSection({ userId }) {
-  const [experiences, setExperiences] = useState([])
-  const [newExp, setNewExp] = useState({
-    title: '',
-    company: '',
-    description: '',
-    start_date: '',
-    end_date: '',
-    is_current: false,
-  })
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchExperiences()
-  }, [])
-
-  const fetchExperiences = async () => {
-    try {
-      const response = await api.get('/auth/experiences/')
-      console.log('Experiences response:', response.data)
-      const expsArray = Array.isArray(response.data) ? response.data : response.data.results || []
-      setExperiences(expsArray)
-    } catch (error) {
-      console.error('Failed to fetch experiences:', error)
-      setExperiences([])
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const addExperience = async (e) => {
-    e.preventDefault()
-    try {
-      const response = await api.post('/auth/experiences/', newExp)
-      setExperiences([response.data, ...experiences])
-      setNewExp({ title: '', company: '', description: '', start_date: '', end_date: '', is_current: false })
-    } catch (error) {
-      console.error('Failed to add experience:', error)
-    }
-  }
-
-  const deleteExperience = async (expId) => {
-    try {
-      await api.delete(`/auth/experiences/${expId}/`)
-      setExperiences(experiences.filter(e => e.id !== expId))
-    } catch (error) {
-      console.error('Failed to delete experience:', error)
-    }
-  }
-
-  return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-xl font-bold text-gray-900 mb-4">Experience</h3>
-
-      <form onSubmit={addExperience} className="mb-6 p-4 bg-gray-50 rounded-lg space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <input
-            type="text"
-            placeholder="Job Title"
-            value={newExp.title}
-            onChange={(e) => setNewExp({ ...newExp, title: e.target.value })}
-            className="px-4 py-2 border border-gray-300 rounded-lg"
-            required
-          />
-          <input
-            type="text"
-            placeholder="Company"
-            value={newExp.company}
-            onChange={(e) => setNewExp({ ...newExp, company: e.target.value })}
-            className="px-4 py-2 border border-gray-300 rounded-lg"
-            required
-          />
-        </div>
-        <textarea
-          placeholder="Description"
-          value={newExp.description}
-          onChange={(e) => setNewExp({ ...newExp, description: e.target.value })}
-          rows="3"
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-        />
-        <div className="grid grid-cols-2 gap-4">
-          <input
-            type="date"
-            value={newExp.start_date}
-            onChange={(e) => setNewExp({ ...newExp, start_date: e.target.value })}
-            className="px-4 py-2 border border-gray-300 rounded-lg"
-            required
-          />
-          <input
-            type="date"
-            value={newExp.end_date}
-            onChange={(e) => setNewExp({ ...newExp, end_date: e.target.value })}
-            disabled={newExp.is_current}
-            className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50"
-          />
-        </div>
-        <label className="flex items-center">
-          <input
-            type="checkbox"
-            checked={newExp.is_current}
-            onChange={(e) => setNewExp({ ...newExp, is_current: e.target.checked })}
-            className="mr-2"
-          />
-          <span className="text-gray-700">Currently working here</span>
-        </label>
-        <button
-          type="submit"
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-semibold"
-        >
-          Add Experience
-        </button>
-      </form>
-
-      <div className="space-y-4">
-        {experiences.map(exp => (
-          <div key={exp.id} className="p-4 bg-gray-50 rounded-lg">
-            <div className="flex justify-between items-start mb-2">
-              <div>
-                <p className="font-semibold text-gray-900">{exp.title}</p>
-                <p className="text-sm text-gray-600">{exp.company}</p>
-              </div>
-              <button
-                onClick={() => deleteExperience(exp.id)}
-                className="text-red-600 hover:text-red-700 text-sm"
-              >
-                Delete
-              </button>
-            </div>
-            <p className="text-sm text-gray-600">{exp.start_date} - {exp.end_date || 'Present'}</p>
-            {exp.description && <p className="text-sm text-gray-700 mt-2">{exp.description}</p>}
-          </div>
-        ))}
+        )}
       </div>
     </div>
   )

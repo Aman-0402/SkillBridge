@@ -49,13 +49,15 @@ export default function Dashboard() {
                 <h4 className="font-semibold text-blue-900">Jobs</h4>
                 <p className="text-sm text-gray-600">Job listings</p>
               </a>
-              <a href="/consultants" className="p-4 bg-yellow-50 rounded-lg border border-yellow-200 hover:shadow-lg transition">
-                <h4 className="font-semibold text-yellow-900">Consultants</h4>
-                <p className="text-sm text-gray-600">Book sessions</p>
-              </a>
+              {user?.role !== 'admin' && (
+                <a href="/consultants" className="p-4 bg-yellow-50 rounded-lg border border-yellow-200 hover:shadow-lg transition">
+                  <h4 className="font-semibold text-yellow-900">Consultants</h4>
+                  <p className="text-sm text-gray-600">Book sessions</p>
+                </a>
+              )}
               <a href="/stats" className="p-4 bg-cyan-50 rounded-lg border border-cyan-200 hover:shadow-lg transition">
                 <h4 className="font-semibold text-cyan-900">Analytics</h4>
-                <p className="text-sm text-gray-600">View stats</p>
+                <p className="text-sm text-gray-600">Dashboard stats</p>
               </a>
               {user?.role === 'consultant' && (
                 <a href="/manage-availability" className="p-4 bg-purple-50 rounded-lg border border-purple-200 hover:shadow-lg transition">
@@ -70,9 +72,9 @@ export default function Dashboard() {
                 </a>
               )}
               {user?.is_staff && (
-                <a href="/admin/dashboard" className="p-4 bg-red-50 rounded-lg border border-red-200 hover:shadow-lg transition">
+                <a href="/admin/panel" className="p-4 bg-red-50 rounded-lg border border-red-200 hover:shadow-lg transition">
                   <h4 className="font-semibold text-red-900">Admin Panel</h4>
-                  <p className="text-sm text-gray-600">Platform stats</p>
+                  <p className="text-sm text-gray-600">Manage data</p>
                 </a>
               )}
             </div>

@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated, BasePermission
 from django.contrib.auth import get_user_model
 from .models import Conversation, Message
 from .serializers import ConversationSerializer, ConversationListSerializer, MessageSerializer
+from .analytics import get_client_stats, get_freelancer_stats, get_consultant_stats, get_admin_stats, get_user_growth
 from projects.models import Project, Proposal
 from jobs.models import Job
 from consultations.models import ConsultationSession

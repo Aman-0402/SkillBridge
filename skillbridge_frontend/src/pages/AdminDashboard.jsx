@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from 'recharts'
 import api from '../services/api'
 import { useAuth } from '../hooks/useAuth'
 
@@ -7,9 +8,10 @@ export default function AdminDashboard() {
   const { user } = useAuth()
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
-    if (user?.is_staff) {
+    if (user?.role === 'admin' && user?.is_staff) {
       fetchStats()
     }
   }, [user])
@@ -17,9 +19,13 @@ export default function AdminDashboard() {
   const fetchStats = async () => {
     try {
       const response = await api.get('/chat/analytics/admin_stats/')
+      console.log('Admin stats response:', response.data)
       setStats(response.data)
+      setError(null)
     } catch (error) {
-      console.error('Failed to fetch admin stats:', error)
+      const errorMsg = error.response?.data?.detail || error.message || 'Unknown error'
+      console.error('Failed to fetch admin stats:', errorMsg)
+      setError(errorMsg)
     } finally {
       setLoading(false)
     }
@@ -40,7 +46,21 @@ export default function AdminDashboard() {
   }
 
   if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>
-  if (!stats) return <div className="text-center py-8 text-gray-600">Failed to load statistics</div>
+  if (error) return (
+    <div className="flex justify-center items-center h-screen">
+      <div className="text-center">
+        <h2 className="text-2xl font-bold text-red-600 mb-4">Error Loading Dashboard</h2>
+        <p className="text-gray-600 mb-4">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded"
+        >
+          Retry
+        </button>
+      </div>
+    </div>
+  )
+  if (!stats) return <div className="text-center py-8 text-gray-600">No statistics available</div>
 
   const platformStats = stats.platform_stats
   const userGrowth = stats.user_growth
@@ -49,11 +69,11 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-indigo-600">SkillBridge Admin</h1>
-          <div className="space-x-4">
-            <Link to="/admin/panel" className="text-indigo-600 hover:text-indigo-700 font-semibold">Control Panel</Link>
-            <Link to="/dashboard" className="text-gray-600 hover:text-gray-900">Back to Dashboard</Link>
+          <div className="flex items-center gap-4">
+            <Link to="/dashboard" className="text-gray-600 hover:text-gray-900 text-xl">← Back</Link>
+            <h1 className="text-2xl font-bold text-indigo-600">SkillBridge Admin</h1>
           </div>
+          <Link to="/admin/panel" className="text-indigo-600 hover:text-indigo-700 font-semibold">Control Panel</Link>
         </div>
       </nav>
 
@@ -150,6 +170,37 @@ export default function AdminDashboard() {
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+
+        {/* User Distribution Pie Chart */}
+        <div className="bg-white rounded-lg shadow p-6 mb-8">
+          <h3 className="text-xl font-bold text-gray-900 mb-6">User Distribution by Role</h3>
+          <div className="flex justify-center">
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={[
+                    { name: 'Clients', value: platformStats.clients, fill: '#10b981' },
+                    { name: 'Freelancers', value: platformStats.freelancers, fill: '#a855f7' },
+                    { name: 'Consultants', value: platformStats.consultants, fill: '#f97316' }
+                  ]}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={100}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  <Cell fill="#10b981" />
+                  <Cell fill="#a855f7" />
+                  <Cell fill="#f97316" />
+                </Pie>
+                <Tooltip formatter={(value) => value} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
         </div>
 

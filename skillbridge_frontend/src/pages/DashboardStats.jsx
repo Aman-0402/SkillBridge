@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import api from '../services/api'
 import { useAuth } from '../hooks/useAuth'
 
@@ -24,6 +24,12 @@ export default function DashboardStats() {
   }
 
   if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>
+
+  // Redirect admin users to admin dashboard
+  if (user?.role === 'admin') {
+    return <Navigate to="/admin/dashboard" replace />
+  }
+
   if (!stats) return <div className="text-center py-8 text-gray-600">Failed to load statistics</div>
 
   const renderClientDashboard = () => (
