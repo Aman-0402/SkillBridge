@@ -15,6 +15,10 @@ import Consultants from './pages/Consultants'
 import ConsultantProfile from './pages/ConsultantProfile'
 import ManageAvailability from './pages/ManageAvailability'
 import Chat from './pages/Chat'
+import Payment from './pages/Payment'
+import Earnings from './pages/Earnings'
+import DashboardStats from './pages/DashboardStats'
+import AdminDashboard from './pages/AdminDashboard'
 
 function App() {
   return (
@@ -117,6 +121,38 @@ function App() {
             element={
               <ProtectedRoute>
                 <Chat />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/payment/:proposalId"
+            element={
+              <ProtectedRoute>
+                <Payment />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/earnings"
+            element={
+              <ProtectedRoute>
+                <Earnings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/stats"
+            element={
+              <ProtectedRoute>
+                <DashboardStats />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/dashboard"
+            element={
+              <ProtectedRoute>
+                <AdminDashboard />
               </ProtectedRoute>
             }
           />

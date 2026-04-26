@@ -82,3 +82,41 @@ class MessageViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(message)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+class AnalyticsViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=['get'])
+    def dashboard_stats(self, request):
+        user = request.user
+
+        if user.role == 'client':
+            stats = get_client_stats(user)
+        elif user.role == 'freelancer':
+            stats = get_freelancer_stats(user)
+        elif user.role == 'consultant':
+            stats = get_consultant_stats(user)
+        else:
+            stats = get_admin_stats()
+
+        return Response({
+            'role': user.role,
+            'stats': stats
+        })
+
+    @action(detail=False, methods=['get'])
+    def admin_stats(self, request):
+        # Only admin users can access
+        if not request.user.is_staff:
+            return Response(
+                {'detail': 'Only admin users can access this'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        stats = get_admin_stats()
+        growth = get_user_growth()
+
+        return Response({
+            'platform_stats': stats,
+            'user_growth': growth
+        })

@@ -53,10 +53,26 @@ export default function Dashboard() {
                 <h4 className="font-semibold text-yellow-900">Consultants</h4>
                 <p className="text-sm text-gray-600">Book sessions</p>
               </a>
+              <a href="/stats" className="p-4 bg-cyan-50 rounded-lg border border-cyan-200 hover:shadow-lg transition">
+                <h4 className="font-semibold text-cyan-900">Analytics</h4>
+                <p className="text-sm text-gray-600">View stats</p>
+              </a>
               {user?.role === 'consultant' && (
                 <a href="/manage-availability" className="p-4 bg-purple-50 rounded-lg border border-purple-200 hover:shadow-lg transition">
                   <h4 className="font-semibold text-purple-900">Availability</h4>
                   <p className="text-sm text-gray-600">Manage hours</p>
+                </a>
+              )}
+              {(user?.role === 'freelancer' || user?.role === 'consultant') && (
+                <a href="/earnings" className="p-4 bg-green-50 rounded-lg border border-green-200 hover:shadow-lg transition">
+                  <h4 className="font-semibold text-green-900">Earnings</h4>
+                  <p className="text-sm text-gray-600">View payments</p>
+                </a>
+              )}
+              {user?.is_staff && (
+                <a href="/admin/dashboard" className="p-4 bg-red-50 rounded-lg border border-red-200 hover:shadow-lg transition">
+                  <h4 className="font-semibold text-red-900">Admin Panel</h4>
+                  <p className="text-sm text-gray-600">Platform stats</p>
                 </a>
               )}
             </div>
