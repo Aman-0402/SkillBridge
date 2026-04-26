@@ -25,7 +25,7 @@ export default function AdminDashboard() {
     }
   }
 
-  if (!user?.is_staff) {
+  if (user?.role !== 'admin' || !user?.is_staff) {
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="text-center">
@@ -50,7 +50,10 @@ export default function AdminDashboard() {
       <nav className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-indigo-600">SkillBridge Admin</h1>
-          <Link to="/dashboard" className="text-gray-600 hover:text-gray-900">Back to Dashboard</Link>
+          <div className="space-x-4">
+            <Link to="/admin/panel" className="text-indigo-600 hover:text-indigo-700 font-semibold">Control Panel</Link>
+            <Link to="/dashboard" className="text-gray-600 hover:text-gray-900">Back to Dashboard</Link>
+          </div>
         </div>
       </nav>
 
@@ -65,29 +68,34 @@ export default function AdminDashboard() {
           <StatCard title="Total Payments" value={`$${platformStats.total_payments}`} icon="💰" />
         </div>
 
-        {/* User Breakdown */}
+        {/* User Enrollment Stats */}
         <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">User Breakdown</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-gray-600 text-sm">Clients</p>
-              <p className="text-3xl font-bold text-blue-900">{platformStats.clients}</p>
+          <h3 className="text-xl font-bold text-gray-900 mb-4">User Enrollment</h3>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200">
+              <p className="text-gray-600 text-sm font-semibold mb-1">Total Users</p>
+              <p className="text-4xl font-bold text-blue-900">{platformStats.total_users}</p>
+              <p className="text-xs text-gray-600 mt-2">All registered users</p>
+            </div>
+            <div className="p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-lg border border-green-200">
+              <p className="text-gray-600 text-sm font-semibold mb-1">Clients</p>
+              <p className="text-4xl font-bold text-green-900">{platformStats.clients}</p>
               <p className="text-xs text-gray-600 mt-2">
-                New this month: {userGrowth.by_role.clients}
+                {userGrowth.by_role.clients} new this month
               </p>
             </div>
-            <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-              <p className="text-gray-600 text-sm">Freelancers</p>
-              <p className="text-3xl font-bold text-green-900">{platformStats.freelancers}</p>
+            <div className="p-6 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border border-purple-200">
+              <p className="text-gray-600 text-sm font-semibold mb-1">Freelancers</p>
+              <p className="text-4xl font-bold text-purple-900">{platformStats.freelancers}</p>
               <p className="text-xs text-gray-600 mt-2">
-                New this month: {userGrowth.by_role.freelancers}
+                {userGrowth.by_role.freelancers} new this month
               </p>
             </div>
-            <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-              <p className="text-gray-600 text-sm">Consultants</p>
-              <p className="text-3xl font-bold text-purple-900">{platformStats.consultants}</p>
+            <div className="p-6 bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg border border-orange-200">
+              <p className="text-gray-600 text-sm font-semibold mb-1">Consultants</p>
+              <p className="text-4xl font-bold text-orange-900">{platformStats.consultants}</p>
               <p className="text-xs text-gray-600 mt-2">
-                New this month: {userGrowth.by_role.consultants}
+                {userGrowth.by_role.consultants} new this month
               </p>
             </div>
           </div>

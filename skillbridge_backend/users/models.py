@@ -6,6 +6,7 @@ class User(AbstractUser):
         ('client', 'Client'),
         ('freelancer', 'Freelancer'),
         ('consultant', 'Consultant'),
+        ('admin', 'Admin'),
     )
 
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='freelancer')

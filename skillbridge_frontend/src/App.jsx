@@ -19,6 +19,7 @@ import Payment from './pages/Payment'
 import Earnings from './pages/Earnings'
 import DashboardStats from './pages/DashboardStats'
 import AdminDashboard from './pages/AdminDashboard'
+import AdminPanel from './pages/AdminPanel'
 
 function App() {
   return (
@@ -153,6 +154,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/panel"
+            element={
+              <ProtectedRoute>
+                <AdminPanel />
               </ProtectedRoute>
             }
           />
