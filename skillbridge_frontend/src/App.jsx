@@ -8,6 +8,9 @@ import Profile from './pages/Profile'
 import Projects from './pages/Projects'
 import ProjectDetail from './pages/ProjectDetail'
 import CreateProject from './pages/CreateProject'
+import Jobs from './pages/Jobs'
+import JobDetail from './pages/JobDetail'
+import PostJob from './pages/PostJob'
 
 function App() {
   return (
@@ -54,6 +57,30 @@ function App() {
             element={
               <ProtectedRoute>
                 <CreateProject />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/jobs"
+            element={
+              <ProtectedRoute>
+                <Jobs />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/jobs/:id"
+            element={
+              <ProtectedRoute>
+                <JobDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/post-job"
+            element={
+              <ProtectedRoute>
+                <PostJob />
               </ProtectedRoute>
             }
           />
