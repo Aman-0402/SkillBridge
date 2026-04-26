@@ -204,3 +204,116 @@ def get_recent_transactions():
         })
 
     return activity_data
+
+def get_kpi_metrics():
+    """Get KPI metrics for admin dashboard"""
+    now = timezone.now()
+    last_30_days = now - timedelta(days=30)
+
+    total_projects = Project.objects.count()
+    completed_projects = Project.objects.filter(status='completed').count()
+    total_proposals = Proposal.objects.count()
+    accepted_proposals = Proposal.objects.filter(status='accepted').count()
+
+    conversion_rate = round(
+        (accepted_proposals / total_proposals * 100) if total_proposals > 0 else 0,
+        2
+    )
+
+    avg_project_value = Project.objects.aggregate(Avg('budget'))['budget__avg'] or 0
+
+    freelancers = User.objects.filter(role='freelancer')
+    consultants = User.objects.filter(role='consultant')
+
+    top_freelancers = []
+    for freelancer in freelancers:
+        earned = Payment.objects.filter(
+            proposal__freelancer=freelancer,
+            status='completed'
+        ).aggregate(Sum('amount'))['amount__sum'] or 0
+        if earned > 0:
+            top_freelancers.append({
+                'id': freelancer.id,
+                'username': freelancer.username,
+                'earned': float(earned),
+                'projects_completed': Project.objects.filter(
+                    selected_freelancer=freelancer,
+                    status='completed'
+                ).count()
+            })
+
+    top_freelancers = sorted(top_freelancers, key=lambda x: x['earned'], reverse=True)[:5]
+
+    top_consultants = []
+    for consultant in consultants:
+        earned = ConsultationSession.objects.filter(
+            consultant=consultant,
+            status='completed'
+        ).aggregate(Sum('session_cost'))['session_cost__sum'] or 0
+        if earned > 0:
+            top_consultants.append({
+                'id': consultant.id,
+                'username': consultant.username,
+                'earned': float(earned),
+                'sessions_completed': ConsultationSession.objects.filter(
+                    consultant=consultant,
+                    status='completed'
+                ).count()
+            })
+
+    top_consultants = sorted(top_consultants, key=lambda x: x['earned'], reverse=True)[:5]
+
+    total_revenue = Payment.objects.filter(status='completed').aggregate(Sum('amount'))['amount__sum'] or 0
+    consultation_revenue = ConsultationSession.objects.filter(status='completed').aggregate(Sum('session_cost'))['session_cost__sum'] or 0
+    project_revenue = total_revenue
+
+    revenue_split = {
+        'projects': float(project_revenue),
+        'consultations': float(consultation_revenue),
+        'total': float(project_revenue + consultation_revenue)
+    }
+
+    active_projects = Project.objects.filter(status__in=['open', 'in_progress']).count()
+    total_users = User.objects.count()
+    user_retention_rate = round(
+        (User.objects.filter(last_login__gte=last_30_days).count() / total_users * 100) if total_users > 0 else 0,
+        2
+    )
+
+    completed_this_month = Project.objects.filter(
+        status='completed',
+        completed_at__gte=last_30_days
+    ).count() if hasattr(Project.objects.model, 'completed_at') else 0
+
+    active_this_month = Project.objects.filter(
+        status__in=['open', 'in_progress'],
+        created_at__gte=last_30_days
+    ).count()
+
+    health_score = min(100, round(
+        (user_retention_rate * 0.3 +
+         (conversion_rate / 100 * 100) * 0.3 +
+         (active_projects / max(total_projects, 1) * 100) * 0.2 +
+         (accepted_proposals / max(total_proposals, 1) * 100) * 0.2),
+        2
+    ))
+
+    return {
+        'conversion_rate': conversion_rate,
+        'avg_project_value': float(avg_project_value),
+        'top_freelancers': top_freelancers,
+        'top_consultants': top_consultants,
+        'revenue_split': revenue_split,
+        'platform_health_score': health_score,
+        'metrics_summary': {
+            'total_projects': total_projects,
+            'completed_projects': completed_projects,
+            'active_projects': active_projects,
+            'total_proposals': total_proposals,
+            'accepted_proposals': accepted_proposals,
+            'total_users': total_users,
+            'user_retention_rate': user_retention_rate,
+            'completed_this_month': completed_this_month,
+            'active_this_month': active_this_month,
+        }
+    }

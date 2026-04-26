@@ -170,6 +170,18 @@ class AnalyticsViewSet(viewsets.ViewSet):
         data = get_recent_transactions()
         return Response(data)
 
+    @action(detail=False, methods=['get'])
+    def kpis(self, request):
+        if not request.user.is_staff or request.user.role != 'admin':
+            return Response(
+                {'detail': 'Only admin users can access this'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        from .analytics import get_kpi_metrics
+        data = get_kpi_metrics()
+        return Response(data)
+
 
 class AdminViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated, IsAdmin]
