@@ -68,36 +68,88 @@ export default function AdminDashboard() {
           <StatCard title="Total Payments" value={`$${platformStats.total_payments}`} icon="💰" />
         </div>
 
-        {/* User Enrollment Stats */}
+        {/* User Role Breakdown - Combined View */}
         <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">User Enrollment</h3>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200">
-              <p className="text-gray-600 text-sm font-semibold mb-1">Total Users</p>
-              <p className="text-4xl font-bold text-blue-900">{platformStats.total_users}</p>
-              <p className="text-xs text-gray-600 mt-2">All registered users</p>
-            </div>
-            <div className="p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-lg border border-green-200">
-              <p className="text-gray-600 text-sm font-semibold mb-1">Clients</p>
-              <p className="text-4xl font-bold text-green-900">{platformStats.clients}</p>
-              <p className="text-xs text-gray-600 mt-2">
-                {userGrowth.by_role.clients} new this month
+          <h3 className="text-2xl font-bold text-gray-900 mb-6">User Role Breakdown</h3>
+
+          {/* Large Visual Cards (Option 2) */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div className="p-8 bg-gradient-to-br from-green-50 to-green-100 rounded-lg border-2 border-green-300 text-center hover:shadow-lg transition">
+              <p className="text-5xl font-bold text-green-900">{platformStats.clients}</p>
+              <p className="text-lg font-semibold text-green-700 mt-2">Clients</p>
+              <p className="text-sm text-green-600 mt-1">
+                {((platformStats.clients / platformStats.total_users) * 100).toFixed(1)}% of total
               </p>
             </div>
-            <div className="p-6 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border border-purple-200">
-              <p className="text-gray-600 text-sm font-semibold mb-1">Freelancers</p>
-              <p className="text-4xl font-bold text-purple-900">{platformStats.freelancers}</p>
-              <p className="text-xs text-gray-600 mt-2">
-                {userGrowth.by_role.freelancers} new this month
+            <div className="p-8 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border-2 border-purple-300 text-center hover:shadow-lg transition">
+              <p className="text-5xl font-bold text-purple-900">{platformStats.freelancers}</p>
+              <p className="text-lg font-semibold text-purple-700 mt-2">Freelancers</p>
+              <p className="text-sm text-purple-600 mt-1">
+                {((platformStats.freelancers / platformStats.total_users) * 100).toFixed(1)}% of total
               </p>
             </div>
-            <div className="p-6 bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg border border-orange-200">
-              <p className="text-gray-600 text-sm font-semibold mb-1">Consultants</p>
-              <p className="text-4xl font-bold text-orange-900">{platformStats.consultants}</p>
-              <p className="text-xs text-gray-600 mt-2">
-                {userGrowth.by_role.consultants} new this month
+            <div className="p-8 bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg border-2 border-orange-300 text-center hover:shadow-lg transition">
+              <p className="text-5xl font-bold text-orange-900">{platformStats.consultants}</p>
+              <p className="text-lg font-semibold text-orange-700 mt-2">Consultants</p>
+              <p className="text-sm text-orange-600 mt-1">
+                {((platformStats.consultants / platformStats.total_users) * 100).toFixed(1)}% of total
               </p>
             </div>
+            <div className="p-8 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border-2 border-blue-300 text-center hover:shadow-lg transition">
+              <p className="text-5xl font-bold text-blue-900">{platformStats.total_users}</p>
+              <p className="text-lg font-semibold text-blue-700 mt-2">Total Users</p>
+              <p className="text-sm text-blue-600 mt-1">All registered</p>
+            </div>
+          </div>
+
+          {/* Detailed Table (Option 3) */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-100 border-b-2 border-gray-300">
+                <tr>
+                  <th className="px-6 py-3 text-left font-semibold text-gray-700">Role</th>
+                  <th className="px-6 py-3 text-center font-semibold text-gray-700">Total Users</th>
+                  <th className="px-6 py-3 text-center font-semibold text-gray-700">Percentage</th>
+                  <th className="px-6 py-3 text-center font-semibold text-gray-700">New This Month</th>
+                  <th className="px-6 py-3 text-center font-semibold text-gray-700">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b hover:bg-green-50 transition">
+                  <td className="px-6 py-4 font-semibold text-gray-900">👤 Clients</td>
+                  <td className="px-6 py-4 text-center text-gray-700">{platformStats.clients}</td>
+                  <td className="px-6 py-4 text-center text-green-600 font-semibold">
+                    {((platformStats.clients / platformStats.total_users) * 100).toFixed(1)}%
+                  </td>
+                  <td className="px-6 py-4 text-center text-gray-700">{userGrowth.by_role.clients}</td>
+                  <td className="px-6 py-4 text-center">
+                    <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-semibold">Active</span>
+                  </td>
+                </tr>
+                <tr className="border-b hover:bg-purple-50 transition">
+                  <td className="px-6 py-4 font-semibold text-gray-900">💼 Freelancers</td>
+                  <td className="px-6 py-4 text-center text-gray-700">{platformStats.freelancers}</td>
+                  <td className="px-6 py-4 text-center text-purple-600 font-semibold">
+                    {((platformStats.freelancers / platformStats.total_users) * 100).toFixed(1)}%
+                  </td>
+                  <td className="px-6 py-4 text-center text-gray-700">{userGrowth.by_role.freelancers}</td>
+                  <td className="px-6 py-4 text-center">
+                    <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-semibold">Active</span>
+                  </td>
+                </tr>
+                <tr className="border-b hover:bg-orange-50 transition">
+                  <td className="px-6 py-4 font-semibold text-gray-900">🎓 Consultants</td>
+                  <td className="px-6 py-4 text-center text-gray-700">{platformStats.consultants}</td>
+                  <td className="px-6 py-4 text-center text-orange-600 font-semibold">
+                    {((platformStats.consultants / platformStats.total_users) * 100).toFixed(1)}%
+                  </td>
+                  <td className="px-6 py-4 text-center text-gray-700">{userGrowth.by_role.consultants}</td>
+                  <td className="px-6 py-4 text-center">
+                    <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">Active</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
