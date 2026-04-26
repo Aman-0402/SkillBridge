@@ -8,6 +8,7 @@ import Profile from './pages/Profile'
 import Projects from './pages/Projects'
 import ProjectDetail from './pages/ProjectDetail'
 import CreateProject from './pages/CreateProject'
+import EditProject from './pages/EditProject'
 import Jobs from './pages/Jobs'
 import JobDetail from './pages/JobDetail'
 import PostJob from './pages/PostJob'
@@ -54,18 +55,26 @@ function App() {
             }
           />
           <Route
-            path="/projects/:id"
-            element={
-              <ProtectedRoute>
-                <ProjectDetail />
-              </ProtectedRoute>
-            }
-          />
-          <Route
             path="/create-project"
             element={
               <ProtectedRoute>
                 <CreateProject />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/projects/:id/edit"
+            element={
+              <ProtectedRoute>
+                <EditProject />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/projects/:id"
+            element={
+              <ProtectedRoute>
+                <ProjectDetail />
               </ProtectedRoute>
             }
           />

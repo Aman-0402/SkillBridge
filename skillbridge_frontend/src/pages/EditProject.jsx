@@ -1,9 +1,15 @@
-import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useParams, Link } from 'react-router-dom'
 import api from '../services/api'
+import { useAuth } from '../hooks/useAuth'
 
-function CreateProject() {
+function EditProject() {
   const navigate = useNavigate()
+  const { id } = useParams()
+  const { user } = useAuth()
+
+  console.log('EditProject mounted with id:', id, 'user:', user)
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -14,8 +20,39 @@ function CreateProject() {
     duration: 'less_than_month',
     deadline: '',
   })
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState({})
+  const [project, setProject] = useState(null)
+
+  useEffect(() => {
+    fetchProject()
+  }, [id])
+
+  const fetchProject = async () => {
+    try {
+      console.log('Fetching project with id:', id)
+      const response = await api.get(`/projects/${id}/`)
+      console.log('Project data received:', response.data)
+      const data = response.data
+      setProject(data)
+      setFormData({
+        title: data.title || '',
+        description: data.description || '',
+        budget: data.budget || '',
+        budget_type: data.budget_type || 'fixed',
+        category: data.category || '',
+        skills_required: data.skills_required || '',
+        duration: data.duration || 'less_than_month',
+        deadline: data.deadline ? data.deadline.slice(0, 16) : '',
+      })
+    } catch (error) {
+      console.error('Failed to fetch project:', error)
+      setErrors({ general: 'Project not found' })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -25,35 +62,67 @@ function CreateProject() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setLoading(true)
+    setSaving(true)
     setErrors({})
 
     try {
-      const response = await api.post('/projects/', formData)
-      navigate(`/projects/${response.data.id}`)
+      await api.patch(`/projects/${id}/`, formData)
+      navigate(`/projects/${id}`)
     } catch (error) {
       if (error.response?.data) {
         setErrors(error.response.data)
       } else {
-        setErrors({ general: 'Failed to create project' })
+        setErrors({ general: 'Failed to update project' })
       }
     } finally {
-      setLoading(false)
+      setSaving(false)
     }
+  }
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-screen">Loading...</div>
+  }
+
+  if (!project) {
+    console.error('Project is null')
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-4">Error</h2>
+          <p className="text-gray-600 mb-4">{errors.general || 'Project not found'}</p>
+          <Link to="/projects" className="text-indigo-600 hover:text-indigo-700">Back to Projects</Link>
+        </div>
+      </div>
+    )
+  }
+
+  const isOwnerOrAdmin = project.client && (project.client.id === user?.id || user?.role === 'admin')
+
+  if (!isOwnerOrAdmin) {
+    console.error('Access denied: User is not owner or admin')
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h2>
+          <p className="text-gray-600 mb-4">You can only edit your own projects</p>
+          <Link to="/projects" className="text-indigo-600 hover:text-indigo-700">Back to Projects</Link>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <Link to="/projects" className="text-indigo-600 hover:text-indigo-700 font-bold">← Back to Projects</Link>
+          <Link to={`/projects/${id}`} className="text-indigo-600 hover:text-indigo-700 font-bold">← Back to Project</Link>
         </div>
       </nav>
 
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="bg-white rounded-lg shadow p-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Post a New Project</h1>
-          <p className="text-gray-600 mb-6">Find the perfect freelancer for your project</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Edit Project</h1>
+          <p className="text-gray-600 mb-6">Update your project details</p>
 
           {errors.general && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
@@ -181,14 +250,14 @@ function CreateProject() {
             <div className="flex space-x-4">
               <button
                 type="submit"
-                disabled={loading}
+                disabled={saving}
                 className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-lg transition disabled:opacity-50"
               >
-                {loading ? 'Posting...' : 'Post Project'}
+                {saving ? 'Saving...' : 'Save Changes'}
               </button>
               <button
                 type="button"
-                onClick={() => navigate('/projects')}
+                onClick={() => navigate(`/projects/${id}`)}
                 className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-3 px-4 rounded-lg transition"
               >
                 Cancel
@@ -201,4 +270,4 @@ function CreateProject() {
   )
 }
 
-export default CreateProject
+export default EditProject

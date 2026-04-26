@@ -8,12 +8,14 @@ export default function Jobs() {
   const [jobs, setJobs] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
+  const [refresh, setRefresh] = useState(0)
 
   useEffect(() => {
     fetchJobs()
-  }, [filter])
+  }, [filter, refresh])
 
   const fetchJobs = async () => {
+    setLoading(true)
     try {
       const url = filter === 'my_jobs' ? '/jobs/my_jobs/' : '/jobs/'
       const response = await api.get(url)
@@ -24,6 +26,11 @@ export default function Jobs() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleFilterChange = (newFilter) => {
+    setFilter(newFilter)
+    setRefresh(prev => prev + 1)
   }
 
   const formatSalary = (min, max) => {
@@ -48,7 +55,7 @@ export default function Jobs() {
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-3xl font-bold text-gray-900">Jobs</h2>
-          {user?.role === 'client' && (
+          {(user?.role === 'client' || user?.role === 'admin') && (
             <Link to="/post-job" className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-semibold">
               Post a Job
             </Link>
@@ -57,14 +64,14 @@ export default function Jobs() {
 
         <div className="mb-6 space-x-4">
           <button
-            onClick={() => setFilter('all')}
+            onClick={() => handleFilterChange('all')}
             className={`px-4 py-2 rounded ${filter === 'all' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-800'}`}
           >
             All Jobs
           </button>
-          {user?.role === 'client' && (
+          {(user?.role === 'client' || user?.role === 'admin') && (
             <button
-              onClick={() => setFilter('my_jobs')}
+              onClick={() => handleFilterChange('my_jobs')}
               className={`px-4 py-2 rounded ${filter === 'my_jobs' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-800'}`}
             >
               My Jobs
@@ -83,7 +90,7 @@ export default function Jobs() {
                 <div className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition">
                   <h3 className="text-xl font-bold text-gray-900 mb-2">{job.title}</h3>
                   <p className="text-gray-600 mb-4">{job.company} • {job.location}</p>
-                  <p className="text-gray-600 mb-4 line-clamp-2">{job.description}</p>
+                  <p className="text-gray-600 mb-4 line-clamp-3 whitespace-pre-wrap">{job.description}</p>
                   <div className="flex justify-between items-center">
                     <div className="space-y-1">
                       <p className="text-sm text-gray-600">Salary: <span className="font-semibold text-gray-900">{formatSalary(job.salary_min, job.salary_max)}</span></p>

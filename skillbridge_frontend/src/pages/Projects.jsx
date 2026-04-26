@@ -8,12 +8,14 @@ export default function Projects() {
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
+  const [refresh, setRefresh] = useState(0)
 
   useEffect(() => {
     fetchProjects()
-  }, [filter])
+  }, [filter, refresh])
 
   const fetchProjects = async () => {
+    setLoading(true)
     try {
       const url = filter === 'my_projects' ? '/projects/my_projects/' : '/projects/'
       const response = await api.get(url)
@@ -24,6 +26,11 @@ export default function Projects() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleFilterChange = (newFilter) => {
+    setFilter(newFilter)
+    setRefresh(prev => prev + 1)
   }
 
   return (
@@ -41,7 +48,7 @@ export default function Projects() {
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-3xl font-bold text-gray-900">Projects</h2>
-          {user?.role === 'client' && (
+          {(user?.role === 'client' || user?.role === 'admin') && (
             <Link to="/create-project" className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-semibold">
               Post a Project
             </Link>
@@ -50,14 +57,14 @@ export default function Projects() {
 
         <div className="mb-6 space-x-4">
           <button
-            onClick={() => setFilter('all')}
+            onClick={() => handleFilterChange('all')}
             className={`px-4 py-2 rounded ${filter === 'all' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-800'}`}
           >
             All Projects
           </button>
           {user?.role === 'client' && (
             <button
-              onClick={() => setFilter('my_projects')}
+              onClick={() => handleFilterChange('my_projects')}
               className={`px-4 py-2 rounded ${filter === 'my_projects' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-800'}`}
             >
               My Projects
@@ -75,7 +82,7 @@ export default function Projects() {
               <Link key={project.id} to={`/projects/${project.id}`}>
                 <div className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition">
                   <h3 className="text-xl font-bold text-gray-900 mb-2">{project.title}</h3>
-                  <p className="text-gray-600 mb-4 line-clamp-2">{project.description}</p>
+                  <p className="text-gray-600 mb-4 line-clamp-3 whitespace-pre-wrap">{project.description}</p>
                   <div className="flex justify-between items-center">
                     <div className="space-y-1">
                       <p className="text-sm text-gray-600">Budget: <span className="font-semibold text-gray-900">${project.budget}</span></p>
