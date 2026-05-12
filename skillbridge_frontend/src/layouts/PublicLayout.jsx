@@ -4,11 +4,14 @@ import Footer from '../components/marketing/Footer'
 import Header from '../components/marketing/Header'
 import ScrollToTop from '../components/utils/ScrollToTop'
 
+const darkPages = ['/login', '/register', '/register/client', '/register/freelancer']
+
 function PublicLayout() {
   const location = useLocation()
+  const isDark = darkPages.includes(location.pathname)
 
   return (
-    <div className="page-surface min-h-screen bg-slate-50 text-slate-950">
+    <div className={`page-surface min-h-screen text-slate-950 ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
       <ScrollToTop />
       <Header />
       <motion.main

@@ -11,6 +11,8 @@ import ContactPage from './pages/marketing/ContactPage'
 
 import Login from './pages/Login'
 import Register from './pages/Register'
+import RegisterClient from './pages/RegisterClient'
+import RegisterFreelancer from './pages/RegisterFreelancer'
 
 import DashboardHome from './pages/dashboard/DashboardHome'
 import Profile from './pages/Profile'
@@ -36,17 +38,17 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          {/* Public marketing pages wrapped with Header + Footer */}
+          {/* Public pages + auth — all wrapped with Header + Footer */}
           <Route element={<PublicLayout />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/services" element={<ServicesPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/register/client" element={<RegisterClient />} />
+            <Route path="/register/freelancer" element={<RegisterFreelancer />} />
           </Route>
-
-          {/* Auth pages (standalone, no layout wrapper) */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
 
           {/* Protected dashboard pages wrapped with DashboardLayout */}
           <Route
