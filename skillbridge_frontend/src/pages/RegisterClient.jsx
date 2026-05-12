@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import Swal from 'sweetalert2'
 import {
   FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash,
   FaArrowRight, FaArrowLeft, FaPhone, FaCircleCheck,
@@ -121,11 +122,43 @@ export default function RegisterClient() {
     setLoading(true)
     setErrors({})
     try {
-      await register(form.username.trim(), form.email.trim(), form.password, form.password2, 'client')
+      await register(form.username.trim(), form.email.trim(), form.password, form.password2, 'client', {
+        full_name: form.fullName.trim(),
+        phone: form.phone.trim(),
+        state: form.state,
+        identity: form.identity,
+        interest1: form.interest1,
+        interest2: form.interest2,
+        interest3: form.interest3,
+      })
+      await Swal.fire({
+        icon: 'success',
+        title: 'Account Created!',
+        html: `Welcome, <strong>${form.fullName.trim()}</strong>!<br/>Your Solution Seeker account is ready. Please log in to continue.`,
+        confirmButtonText: 'Go to Login',
+        confirmButtonColor: '#2563eb',
+        background: '#0f172a',
+        color: '#f1f5f9',
+        iconColor: '#22c55e',
+        customClass: { popup: 'rounded-2xl' },
+      })
       navigate('/login')
     } catch (error) {
+      const msg = typeof error === 'object'
+        ? Object.values(error).flat().join('<br/>')
+        : String(error)
+      Swal.fire({
+        icon: 'error',
+        title: 'Registration Failed',
+        html: msg,
+        confirmButtonText: 'Try Again',
+        confirmButtonColor: '#2563eb',
+        background: '#0f172a',
+        color: '#f1f5f9',
+        iconColor: '#f43f5e',
+        customClass: { popup: 'rounded-2xl' },
+      })
       if (typeof error === 'object') setErrors(error)
-      else setErrors({ general: String(error) })
       setStep(0)
     } finally {
       setLoading(false)
@@ -244,7 +277,7 @@ export default function RegisterClient() {
           {/* ── STEP 0: Personal Info ── */}
           {step === 0 && (
             <div className="mt-6 grid gap-4">
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid items-start gap-4 sm:grid-cols-2">
                 {/* Full Name */}
                 <label className="grid gap-1.5 text-xs font-black uppercase tracking-[0.14em] text-slate-400">
                   Full Name *
@@ -253,7 +286,7 @@ export default function RegisterClient() {
                     <input type="text" name="fullName" value={form.fullName} onChange={handleChange}
                       placeholder="Rahul Sharma" className={inputClass('fullName')} />
                   </span>
-                  {errors.fullName && <span className="text-xs font-bold text-rose-500">{errors.fullName}</span>}
+                  <span className="min-h-[1rem] text-xs font-bold text-rose-500">{errors.fullName || ''}</span>
                 </label>
 
                 {/* Phone */}
@@ -264,11 +297,11 @@ export default function RegisterClient() {
                     <input type="tel" name="phone" value={form.phone} onChange={handleChange}
                       placeholder="9876543210" maxLength={10} className={inputClass('phone')} />
                   </span>
-                  {errors.phone && <span className="text-xs font-bold text-rose-500">{errors.phone}</span>}
+                  <span className="min-h-[1rem] text-xs font-bold text-rose-500">{errors.phone || ''}</span>
                 </label>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid items-start gap-4 sm:grid-cols-2">
                 {/* Username */}
                 <label className="grid gap-1.5 text-xs font-black uppercase tracking-[0.14em] text-slate-400">
                   Username *
@@ -277,9 +310,9 @@ export default function RegisterClient() {
                     <input type="text" name="username" value={form.username} onChange={handleChange}
                       placeholder="e.g. rahul1234" className={inputClass('username')} />
                   </span>
-                  {errors.username
-                    ? <span className="text-xs font-bold text-rose-500">{errors.username}</span>
-                    : <span className="text-xs text-slate-600">3–20 chars, letters/numbers/underscores</span>}
+                  <span className="min-h-[1rem] text-xs font-bold text-rose-500">
+                    {errors.username || <span className="font-semibold text-slate-600">3–20 chars, letters/numbers/underscores</span>}
+                  </span>
                 </label>
 
                 {/* Email */}
@@ -290,7 +323,7 @@ export default function RegisterClient() {
                     <input type="email" name="email" value={form.email} onChange={handleChange}
                       placeholder="you@company.com" className={inputClass('email')} />
                   </span>
-                  {errors.email && <span className="text-xs font-bold text-rose-500">{errors.email}</span>}
+                  <span className="min-h-[1rem] text-xs font-bold text-rose-500">{errors.email || ''}</span>
                 </label>
               </div>
 
