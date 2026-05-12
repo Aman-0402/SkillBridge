@@ -23,7 +23,10 @@ class ConversationViewSet(viewsets.ModelViewSet):
     serializer_class = ConversationSerializer
 
     def get_queryset(self):
-        return Conversation.objects.filter(participants=self.request.user)
+        user = self.request.user
+        if user.role == 'admin' and user.is_staff:
+            return Conversation.objects.all()
+        return Conversation.objects.filter(participants=user)
 
     def get_serializer_class(self):
         if self.action == 'list':

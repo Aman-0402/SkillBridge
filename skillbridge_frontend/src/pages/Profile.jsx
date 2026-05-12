@@ -12,7 +12,7 @@ import { useAuth } from '../hooks/useAuth'
 const KYC_BADGE = {
   unverified: { label: 'Not Verified',  cls: 'bg-slate-100 text-slate-600',  icon: FaShieldHalved },
   pending:    { label: 'Under Review',  cls: 'bg-amber-50 text-amber-700',   icon: FaClock },
-  verified:   { label: 'Verified',      cls: 'bg-emerald-50 text-emerald-700', icon: FaCircleCheck },
+  verified:   { label: 'Verified',      cls: 'bg-blue-50 text-blue-700', icon: FaCircleCheck },
   rejected:   { label: 'Rejected',      cls: 'bg-rose-50 text-rose-600',     icon: FaXmark },
 }
 
@@ -277,7 +277,7 @@ export default function Profile() {
               )}
               {/* Verified tick overlay */}
               {kyc === 'verified' && (
-                <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-emerald-500 text-white">
+                <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-blue-500 text-white">
                   <FaCircleCheck className="text-xs" />
                 </span>
               )}
@@ -393,8 +393,8 @@ export default function Profile() {
             )}
           </div>
 
-          {/* KYC Section */}
-          <KYCSection profile={profile} onRefresh={fetchProfile} />
+          {/* KYC Section — hidden for admin (they approve KYC, don't submit it) */}
+          {user?.role !== 'admin' && <KYCSection profile={profile} onRefresh={fetchProfile} />}
 
           {/* Change Password */}
           <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">

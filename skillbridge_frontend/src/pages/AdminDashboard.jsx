@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line } from 'recharts'
 import api from '../services/api'
 import { useAuth } from '../hooks/useAuth'
+import { formatCurrency } from '../utils/formatters'
 
 export default function AdminDashboard() {
   const { user } = useAuth()
@@ -14,13 +15,8 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  useEffect(() => {
-    if (user?.role === 'admin' && user?.is_staff) {
-      fetchStats()
-    }
-  }, [user])
-
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
+    setLoading(true)
     try {
       const [statsRes, monthlyRes, growthRes, transactionsRes, kpisRes] = await Promise.all([
         api.get('/chat/analytics/admin_stats/'),
@@ -29,20 +25,22 @@ export default function AdminDashboard() {
         api.get('/chat/analytics/recent_transactions/'),
         api.get('/chat/analytics/kpis/')
       ])
-setStats(statsRes.data)
+      setStats(statsRes.data)
       setMonthlyData(monthlyRes.data || [])
       setUserGrowthData(growthRes.data || [])
       setRecentTransactions(transactionsRes.data || [])
       setKpis(kpisRes.data)
       setError(null)
     } catch (error) {
-      const errorMsg = error.response?.data?.detail || error.message || 'Unknown error'
-      console.error('Failed to fetch admin stats:', errorMsg)
-      setError(errorMsg)
+      setError(error.response?.data?.detail || error.message || 'Unknown error')
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    if (user?.role === 'admin' && user?.is_staff) fetchStats()
+  }, [user?.role, user?.is_staff, fetchStats])
 
   if (user?.role !== 'admin' || !user?.is_staff) {
     return (
@@ -114,14 +112,12 @@ setStats(statsRes.data)
         </Link>
       </div>
 
-      {/* ── Platform Stat Cards ── */}
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-3">
         {[
-          { label: 'Total Users',    value: platformStats.total_users,    sub: 'Registered accounts', color: 'text-blue-600',    bg: 'bg-blue-50' },
-          { label: 'Total Projects', value: platformStats.total_projects,  sub: 'All time',            color: 'text-violet-600',  bg: 'bg-violet-50' },
-          { label: 'Total Jobs',     value: platformStats.total_jobs,      sub: 'Posted',              color: 'text-amber-600',   bg: 'bg-amber-50' },
-          { label: 'Total Revenue',  value: `₹${Number(platformStats.total_payments).toLocaleString('en-IN')}`, sub: 'Completed payments', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-        ].map(({ label, value, sub, color, bg }) => (
+          { label: 'Total Users',    value: platformStats.total_users,                  sub: 'Registered accounts', color: 'text-blue-600' },
+          { label: 'Total Projects', value: platformStats.total_projects,                sub: 'All time',            color: 'text-violet-600' },
+          { label: 'Total Revenue',  value: formatCurrency(platformStats.total_payments), sub: 'Completed payments', color: 'text-emerald-600' },
+        ].map(({ label, value, sub, color }) => (
           <div key={label} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-xs font-black uppercase tracking-wide text-slate-500">{label}</p>
             <p className={`mt-2 text-2xl font-black ${color}`}>{value}</p>
@@ -130,16 +126,31 @@ setStats(statsRes.data)
         ))}
       </div>
 
-      {/* ── KPI Cards ── */}
+      {/* Role overview cards */}
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        {[
+          { label: 'Clients',     value: platformStats.clients,     sub: 'Solution seekers', color: 'text-blue-600',   border: 'border-blue-100',   bg: 'bg-blue-50',   icon: '👤' },
+          { label: 'Freelancers', value: platformStats.freelancers,  sub: 'Project workers',  color: 'text-violet-600', border: 'border-violet-100', bg: 'bg-violet-50', icon: '💼' },
+          { label: 'Consultants', value: platformStats.consultants,  sub: 'Expert advisors',  color: 'text-amber-600',  border: 'border-amber-100',  bg: 'bg-amber-50',  icon: '🎓' },
+          { label: 'Total Jobs',  value: platformStats.total_jobs,   sub: 'Posted',           color: 'text-emerald-600',border: 'border-emerald-100',bg: 'bg-emerald-50',icon: '📋' },
+        ].map(({ label, value, sub, color, border, bg, icon }) => (
+          <div key={label} className={`rounded-xl border ${border} ${bg} p-5`}>
+            <p className="text-xs font-black uppercase tracking-wide text-slate-500">{icon} {label}</p>
+            <p className={`mt-2 text-2xl font-black ${color}`}>{value}</p>
+            <p className="mt-1 text-xs text-slate-400">{sub}</p>
+          </div>
+        ))}
+      </div>
+
       {kpis && (
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <p className="mb-5 font-black text-slate-950">Key Performance Indicators</p>
           <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
             {[
-              { label: 'Conversion Rate',  value: `${kpis.conversion_rate}%`,                                                                    sub: 'Proposals accepted',  color: 'text-blue-600' },
-              { label: 'Avg Project Value',value: `₹${Number(kpis.avg_project_value).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`,    sub: 'Average budget',      color: 'text-emerald-600' },
-              { label: 'Platform Health',  value: `${kpis.platform_health_score}%`,                                                              sub: 'Overall score',       color: 'text-violet-600' },
-              { label: 'Total Revenue',    value: `₹${Number(kpis.revenue_split.total).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`,  sub: 'All sources',         color: 'text-amber-600' },
+              { label: 'Conversion Rate',   value: `${kpis.conversion_rate}%`,              sub: 'Proposals accepted', color: 'text-blue-600' },
+              { label: 'Avg Project Value', value: formatCurrency(kpis.avg_project_value),  sub: 'Average budget',     color: 'text-emerald-600' },
+              { label: 'Platform Health',   value: `${kpis.platform_health_score}%`,        sub: 'Overall score',      color: 'text-violet-600' },
+              { label: 'Total Revenue',     value: formatCurrency(kpis.revenue_split.total),sub: 'All sources',        color: 'text-amber-600' },
             ].map(({ label, value, sub, color }) => (
               <div key={label} className="rounded-xl border border-slate-100 bg-slate-50 p-4">
                 <p className="text-xs font-black uppercase tracking-wide text-slate-500">{label}</p>
@@ -149,48 +160,37 @@ setStats(statsRes.data)
             ))}
           </div>
 
-          {/* Revenue Split */}
           <div className="mt-5 grid grid-cols-2 gap-4 border-t border-slate-100 pt-5">
             <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
               <p className="text-xs font-black uppercase tracking-wide text-slate-500">Project Revenue</p>
-              <p className="mt-1 text-lg font-black text-blue-700">₹{Number(kpis.revenue_split.projects).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
+              <p className="mt-1 text-lg font-black text-blue-700">{formatCurrency(kpis.revenue_split.projects)}</p>
             </div>
             <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
               <p className="text-xs font-black uppercase tracking-wide text-slate-500">Consultation Revenue</p>
-              <p className="mt-1 text-lg font-black text-emerald-700">₹{Number(kpis.revenue_split.consultations).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
+              <p className="mt-1 text-lg font-black text-emerald-700">{formatCurrency(kpis.revenue_split.consultations)}</p>
             </div>
           </div>
 
-          {/* Top Performers */}
           <div className="mt-5 grid gap-5 border-t border-slate-100 pt-5 md:grid-cols-2">
-            <div>
-              <p className="mb-3 text-sm font-black text-slate-950">Top Freelancers</p>
-              <div className="space-y-2">
-                {kpis.top_freelancers.length > 0 ? kpis.top_freelancers.map((f, i) => (
-                  <div key={i} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                    <div>
-                      <p className="text-sm font-black text-slate-900">{i + 1}. {f.username}</p>
-                      <p className="text-xs text-slate-500">{f.projects_completed} projects</p>
+            {[
+              { title: 'Top Freelancers', list: kpis.top_freelancers, subKey: 'projects_completed', subLabel: 'projects', color: 'text-violet-600' },
+              { title: 'Top Consultants', list: kpis.top_consultants, subKey: 'sessions_completed', subLabel: 'sessions', color: 'text-amber-600' },
+            ].map(({ title, list, subKey, subLabel, color }) => (
+              <div key={title}>
+                <p className="mb-3 text-sm font-black text-slate-950">{title}</p>
+                <div className="space-y-2">
+                  {list.length > 0 ? list.map((item, i) => (
+                    <div key={i} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                      <div>
+                        <p className="text-sm font-black text-slate-900">{i + 1}. {item.username}</p>
+                        <p className="text-xs text-slate-500">{item[subKey]} {subLabel}</p>
+                      </div>
+                      <span className={`text-sm font-black ${color}`}>{formatCurrency(item.earned)}</span>
                     </div>
-                    <span className="text-sm font-black text-violet-600">₹{Number(f.earned).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
-                  </div>
-                )) : <p className="text-sm text-slate-400">No data yet</p>}
+                  )) : <p className="text-sm text-slate-400">No data yet</p>}
+                </div>
               </div>
-            </div>
-            <div>
-              <p className="mb-3 text-sm font-black text-slate-950">Top Consultants</p>
-              <div className="space-y-2">
-                {kpis.top_consultants.length > 0 ? kpis.top_consultants.map((c, i) => (
-                  <div key={i} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                    <div>
-                      <p className="text-sm font-black text-slate-900">{i + 1}. {c.username}</p>
-                      <p className="text-xs text-slate-500">{c.sessions_completed} sessions</p>
-                    </div>
-                    <span className="text-sm font-black text-amber-600">₹{Number(c.earned).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
-                  </div>
-                )) : <p className="text-sm text-slate-400">No data yet</p>}
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       )}
@@ -276,7 +276,7 @@ setStats(statsRes.data)
               {[
                 { label: 'Active',    value: platformStats.active_projects,    color: 'text-amber-600' },
                 { label: 'Completed', value: platformStats.completed_projects,  color: 'text-emerald-600' },
-                { label: 'Avg Budget',value: `₹${Number(platformStats.avg_project_budget).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, color: 'text-blue-600' },
+                { label: 'Avg Budget',value: formatCurrency(platformStats.avg_project_budget), color: 'text-blue-600' },
               ].map(({ label, value, color }) => (
                 <div key={label} className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-center">
                   <p className={`text-lg font-black ${color}`}>{value}</p>
@@ -289,9 +289,9 @@ setStats(statsRes.data)
             <p className="mb-4 font-black text-slate-950">Payments</p>
             <div className="grid grid-cols-3 gap-3">
               {[
-                { label: 'Total Paid',     value: `₹${Number(platformStats.total_payments).toLocaleString('en-IN')}`, color: 'text-emerald-600' },
-                { label: 'Transactions',   value: platformStats.total_transactions,                                    color: 'text-blue-600' },
-                { label: 'Avg',            value: `₹${platformStats.total_transactions > 0 ? Number(platformStats.total_payments / platformStats.total_transactions).toLocaleString('en-IN', { maximumFractionDigits: 0 }) : 0}`, color: 'text-violet-600' },
+                { label: 'Total Paid',   value: formatCurrency(platformStats.total_payments), color: 'text-emerald-600' },
+                { label: 'Transactions', value: platformStats.total_transactions,              color: 'text-blue-600' },
+                { label: 'Avg',          value: platformStats.total_transactions > 0 ? formatCurrency(platformStats.total_payments / platformStats.total_transactions) : '₹0', color: 'text-violet-600' },
               ].map(({ label, value, color }) => (
                 <div key={label} className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-center">
                   <p className={`text-lg font-black ${color}`}>{value}</p>
@@ -325,7 +325,7 @@ setStats(statsRes.data)
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
             <XAxis dataKey="month" angle={-45} textAnchor="end" height={70} tick={{ fontSize: 11 }} />
             <YAxis tick={{ fontSize: 11 }} />
-            <Tooltip formatter={(v) => `₹${Number(v).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`} />
+            <Tooltip formatter={(v) => formatCurrency(v)} />
             <Bar dataKey="amount" fill="#3b82f6" radius={[6, 6, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
@@ -357,7 +357,7 @@ setStats(statsRes.data)
               <div key={i} className="flex items-start gap-4 py-4 first:pt-0 last:pb-0">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-sm font-black text-emerald-600">₹</div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-black text-slate-900">₹{Number(t.amount).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
+                  <p className="text-sm font-black text-slate-900">{formatCurrency(t.amount)}</p>
                   <p className="text-xs text-slate-500">
                     <span className="font-semibold text-slate-700">{t.client}</span> → <span className="font-semibold text-slate-700">{t.freelancer}</span>
                     {t.project && ` · ${t.project}`}

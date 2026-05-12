@@ -93,6 +93,12 @@ export default function Chat() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
           {/* Conversations List */}
           <div className="bg-white rounded-lg shadow flex flex-col">
+            {user?.role === 'admin' && user?.is_staff && (
+              <div className="flex items-center gap-2 rounded-t-lg bg-amber-50 border-b border-amber-200 px-4 py-2">
+                <span className="text-amber-600 text-xs">🛡</span>
+                <span className="text-xs font-bold text-amber-700">Admin View — All Platform Conversations</span>
+              </div>
+            )}
             <div className="p-4 border-b">
               <h2 className="text-lg font-bold text-gray-900 mb-4">Messages</h2>
               <input

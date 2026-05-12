@@ -121,6 +121,7 @@ export default function AdminPanel() {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [roleFilter, setRoleFilter] = useState('all')
 
   useEffect(() => {
     if (user?.role === 'admin' && user?.is_staff) {
@@ -227,7 +228,6 @@ export default function AdminPanel() {
 
   const renderTable = () => {
     if (loading) return <div className="text-center py-8">Loading...</div>
-    if (!data.length) return <div className="text-center py-8 text-gray-600">No data found</div>
 
     const columns = {
       users: ['username', 'email', 'role', 'is_featured', 'is_staff', 'date_joined'],
@@ -237,6 +237,12 @@ export default function AdminPanel() {
       jobs: ['title', 'client', 'budget', 'status', 'created_at'],
       consultations: ['consultant', 'client', 'session_cost', 'status', 'created_at']
     }
+
+    const displayData = activeTab === 'users' && roleFilter !== 'all'
+      ? data.filter(u => u.role === roleFilter)
+      : data
+
+    if (!displayData.length) return <div className="text-center py-8 text-gray-600">No data found</div>
 
     return (
       <div className="overflow-x-auto">
@@ -250,7 +256,7 @@ export default function AdminPanel() {
             </tr>
           </thead>
           <tbody>
-            {data.map((item, idx) => (
+            {displayData.map((item, idx) => (
               <tr key={idx} className="border-b hover:bg-gray-50">
                 {columns[activeTab]?.map(col => (
                   <td key={col} className="px-4 py-2">
@@ -308,7 +314,7 @@ export default function AdminPanel() {
           {tabs.map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => { setActiveTab(tab.id); setRoleFilter('all') }}
               className={`px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition ${
                 activeTab === tab.id
                   ? 'bg-indigo-600 text-white'
@@ -321,8 +327,8 @@ export default function AdminPanel() {
         </div>
 
         {/* Search Bar */}
-        {activeTab === 'users' && activeTab !== 'kyc' && (
-          <div className="mb-4">
+        {activeTab === 'users' && (
+          <div className="mb-4 space-y-3">
             <input
               type="text"
               placeholder="Search users..."
@@ -330,6 +336,27 @@ export default function AdminPanel() {
               onChange={handleSearch}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600"
             />
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: 'all',        label: '👥 All' },
+                { value: 'client',     label: '👤 Clients' },
+                { value: 'freelancer', label: '💼 Freelancers' },
+                { value: 'consultant', label: '🎓 Consultants' },
+                { value: 'admin',      label: '🛡 Admins' },
+              ].map(({ value, label }) => (
+                <button
+                  key={value}
+                  onClick={() => setRoleFilter(value)}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition ${
+                    roleFilter === value
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
