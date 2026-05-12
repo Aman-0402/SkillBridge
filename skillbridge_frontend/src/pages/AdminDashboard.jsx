@@ -29,12 +29,7 @@ export default function AdminDashboard() {
         api.get('/chat/analytics/recent_transactions/'),
         api.get('/chat/analytics/kpis/')
       ])
-      console.log('Admin stats response:', statsRes.data)
-      console.log('Monthly data response:', monthlyRes.data)
-      console.log('User growth response:', growthRes.data)
-      console.log('Recent transactions response:', transactionsRes.data)
-      console.log('KPIs response:', kpisRes.data)
-      setStats(statsRes.data)
+setStats(statsRes.data)
       setMonthlyData(monthlyRes.data || [])
       setUserGrowthData(growthRes.data || [])
       setRecentTransactions(transactionsRes.data || [])
