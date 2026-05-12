@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { NavLink, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { FaBars, FaXmark } from 'react-icons/fa6'
-import logo from '../../assets/brand/logo.png'
+import logo from '../../assets/newlogo.png'
 import { navLinks } from '../../data'
 import Button from '../ui/Button'
 

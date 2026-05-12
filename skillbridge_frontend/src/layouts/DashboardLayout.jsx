@@ -9,7 +9,7 @@ import {
   FaUser,
   FaUserTie,
 } from 'react-icons/fa6'
-import logoBw from '../assets/brand/logo-bw.png'
+import logoBw from '../assets/newlogo.png'
 import ScrollToTop from '../components/utils/ScrollToTop'
 import { useAuth } from '../hooks/useAuth'
 

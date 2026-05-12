@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { FaArrowRight, FaEnvelope, FaLocationDot, FaPhone } from 'react-icons/fa6'
-import logo from '../../assets/brand/logo.png'
+import logo from '../../assets/newlogo.png'
 
 const footerGroups = [
   {
