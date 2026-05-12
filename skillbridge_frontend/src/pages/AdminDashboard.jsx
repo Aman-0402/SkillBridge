@@ -119,355 +119,264 @@ export default function AdminDashboard() {
         </Link>
       </div>
 
-      <div className="space-y-6">
+      {/* ── Platform Stat Cards ── */}
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        {[
+          { label: 'Total Users',    value: platformStats.total_users,    sub: 'Registered accounts', color: 'text-blue-600',    bg: 'bg-blue-50' },
+          { label: 'Total Projects', value: platformStats.total_projects,  sub: 'All time',            color: 'text-violet-600',  bg: 'bg-violet-50' },
+          { label: 'Total Jobs',     value: platformStats.total_jobs,      sub: 'Posted',              color: 'text-amber-600',   bg: 'bg-amber-50' },
+          { label: 'Total Revenue',  value: `₹${Number(platformStats.total_payments).toLocaleString('en-IN')}`, sub: 'Completed payments', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+        ].map(({ label, value, sub, color, bg }) => (
+          <div key={label} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-wide text-slate-500">{label}</p>
+            <p className={`mt-2 text-2xl font-black ${color}`}>{value}</p>
+            <p className="mt-1 text-xs text-slate-400">{sub}</p>
+          </div>
+        ))}
+      </div>
 
-        {/* Platform Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <StatCard title="Total Users" value={platformStats.total_users} icon="👥" />
-          <StatCard title="Total Projects" value={platformStats.total_projects} icon="📊" />
-          <StatCard title="Total Jobs" value={platformStats.total_jobs} icon="💼" />
-          <StatCard title="Total Payments" value={`₹${Number(platformStats.total_payments).toLocaleString('en-IN')}`} icon="💰" />
-        </div>
-
-        {/* KPI Cards */}
-        {kpis && (
-          <div className="bg-white rounded-lg shadow p-6 mb-8">
-            <h3 className="text-2xl font-bold text-gray-900 mb-6">Key Performance Indicators</h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-              <div className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border-l-4 border-blue-500">
-                <p className="text-gray-600 text-sm font-semibold mb-1">Conversion Rate</p>
-                <p className="text-4xl font-bold text-blue-900">{kpis.conversion_rate}%</p>
-                <p className="text-xs text-blue-600 mt-2">Proposals accepted</p>
+      {/* ── KPI Cards ── */}
+      {kpis && (
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <p className="mb-5 font-black text-slate-950">Key Performance Indicators</p>
+          <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+            {[
+              { label: 'Conversion Rate',  value: `${kpis.conversion_rate}%`,                                                                    sub: 'Proposals accepted',  color: 'text-blue-600' },
+              { label: 'Avg Project Value',value: `₹${Number(kpis.avg_project_value).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`,    sub: 'Average budget',      color: 'text-emerald-600' },
+              { label: 'Platform Health',  value: `${kpis.platform_health_score}%`,                                                              sub: 'Overall score',       color: 'text-violet-600' },
+              { label: 'Total Revenue',    value: `₹${Number(kpis.revenue_split.total).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`,  sub: 'All sources',         color: 'text-amber-600' },
+            ].map(({ label, value, sub, color }) => (
+              <div key={label} className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                <p className="text-xs font-black uppercase tracking-wide text-slate-500">{label}</p>
+                <p className={`mt-2 text-xl font-black ${color}`}>{value}</p>
+                <p className="mt-1 text-xs text-slate-400">{sub}</p>
               </div>
-              <div className="p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-lg border-l-4 border-green-500">
-                <p className="text-gray-600 text-sm font-semibold mb-1">Avg Project Value</p>
-                <p className="text-4xl font-bold text-green-900">₹{Number(kpis.avg_project_value).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
-                <p className="text-xs text-green-600 mt-2">Average budget</p>
-              </div>
-              <div className="p-6 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border-l-4 border-purple-500">
-                <p className="text-gray-600 text-sm font-semibold mb-1">Platform Health</p>
-                <p className="text-4xl font-bold text-purple-900">{kpis.platform_health_score}%</p>
-                <p className="text-xs text-purple-600 mt-2">Overall score</p>
-              </div>
-              <div className="p-6 bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg border-l-4 border-orange-500">
-                <p className="text-gray-600 text-sm font-semibold mb-1">Total Revenue</p>
-                <p className="text-4xl font-bold text-orange-900">₹{Number(kpis.revenue_split.total).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
-                <p className="text-xs text-orange-600 mt-2">All sources</p>
-              </div>
-            </div>
-
-            {/* Revenue Split */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-gray-700 text-sm font-semibold mb-1">Project Revenue</p>
-                <p className="text-3xl font-bold text-blue-900">₹{Number(kpis.revenue_split.projects).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p>
-              </div>
-              <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
-                <p className="text-gray-700 text-sm font-semibold mb-1">Consultation Revenue</p>
-                <p className="text-3xl font-bold text-emerald-900">₹{Number(kpis.revenue_split.consultations).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p>
-              </div>
-            </div>
-
-            {/* Top Performers */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Top Freelancers */}
-              <div>
-                <h4 className="text-lg font-bold text-gray-900 mb-4">Top Freelancers</h4>
-                <div className="space-y-3">
-                  {kpis.top_freelancers.length > 0 ? (
-                    kpis.top_freelancers.map((freelancer, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-3 bg-purple-50 rounded-lg border border-purple-200">
-                        <div>
-                          <p className="font-semibold text-gray-900">{idx + 1}. {freelancer.username}</p>
-                          <p className="text-xs text-gray-600">{freelancer.projects_completed} projects completed</p>
-                        </div>
-                        <p className="text-lg font-bold text-purple-900">₹{Number(freelancer.earned).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-gray-500 text-sm">No data available</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Top Consultants */}
-              <div>
-                <h4 className="text-lg font-bold text-gray-900 mb-4">Top Consultants</h4>
-                <div className="space-y-3">
-                  {kpis.top_consultants.length > 0 ? (
-                    kpis.top_consultants.map((consultant, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
-                        <div>
-                          <p className="font-semibold text-gray-900">{idx + 1}. {consultant.username}</p>
-                          <p className="text-xs text-gray-600">{consultant.sessions_completed} sessions completed</p>
-                        </div>
-                        <p className="text-lg font-bold text-orange-900">₹{Number(consultant.earned).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-gray-500 text-sm">No data available</p>
-                  )}
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
-        )}
 
-        {/* User Role Breakdown - Combined View */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h3 className="text-2xl font-bold text-gray-900 mb-6">User Role Breakdown</h3>
-
-          {/* Large Visual Cards (Option 2) */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div className="p-8 bg-gradient-to-br from-green-50 to-green-100 rounded-lg border-2 border-green-300 text-center hover:shadow-lg transition">
-              <p className="text-5xl font-bold text-green-900">{platformStats.clients}</p>
-              <p className="text-lg font-semibold text-green-700 mt-2">Clients</p>
-              <p className="text-sm text-green-600 mt-1">
-                {((platformStats.clients / platformStats.total_users) * 100).toFixed(1)}% of total
-              </p>
+          {/* Revenue Split */}
+          <div className="mt-5 grid grid-cols-2 gap-4 border-t border-slate-100 pt-5">
+            <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
+              <p className="text-xs font-black uppercase tracking-wide text-slate-500">Project Revenue</p>
+              <p className="mt-1 text-lg font-black text-blue-700">₹{Number(kpis.revenue_split.projects).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
             </div>
-            <div className="p-8 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border-2 border-purple-300 text-center hover:shadow-lg transition">
-              <p className="text-5xl font-bold text-purple-900">{platformStats.freelancers}</p>
-              <p className="text-lg font-semibold text-purple-700 mt-2">Freelancers</p>
-              <p className="text-sm text-purple-600 mt-1">
-                {((platformStats.freelancers / platformStats.total_users) * 100).toFixed(1)}% of total
-              </p>
-            </div>
-            <div className="p-8 bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg border-2 border-orange-300 text-center hover:shadow-lg transition">
-              <p className="text-5xl font-bold text-orange-900">{platformStats.consultants}</p>
-              <p className="text-lg font-semibold text-orange-700 mt-2">Consultants</p>
-              <p className="text-sm text-orange-600 mt-1">
-                {((platformStats.consultants / platformStats.total_users) * 100).toFixed(1)}% of total
-              </p>
-            </div>
-            <div className="p-8 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border-2 border-blue-300 text-center hover:shadow-lg transition">
-              <p className="text-5xl font-bold text-blue-900">{platformStats.total_users}</p>
-              <p className="text-lg font-semibold text-blue-700 mt-2">Total Users</p>
-              <p className="text-sm text-blue-600 mt-1">All registered</p>
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
+              <p className="text-xs font-black uppercase tracking-wide text-slate-500">Consultation Revenue</p>
+              <p className="mt-1 text-lg font-black text-emerald-700">₹{Number(kpis.revenue_split.consultations).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
             </div>
           </div>
 
-          {/* Detailed Table (Option 3) */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-100 border-b-2 border-gray-300">
-                <tr>
-                  <th className="px-6 py-3 text-left font-semibold text-gray-700">Role</th>
-                  <th className="px-6 py-3 text-center font-semibold text-gray-700">Total Users</th>
-                  <th className="px-6 py-3 text-center font-semibold text-gray-700">Percentage</th>
-                  <th className="px-6 py-3 text-center font-semibold text-gray-700">New This Month</th>
-                  <th className="px-6 py-3 text-center font-semibold text-gray-700">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b hover:bg-green-50 transition">
-                  <td className="px-6 py-4 font-semibold text-gray-900">👤 Clients</td>
-                  <td className="px-6 py-4 text-center text-gray-700">{platformStats.clients}</td>
-                  <td className="px-6 py-4 text-center text-green-600 font-semibold">
-                    {((platformStats.clients / platformStats.total_users) * 100).toFixed(1)}%
-                  </td>
-                  <td className="px-6 py-4 text-center text-gray-700">{userGrowth.by_role.clients}</td>
-                  <td className="px-6 py-4 text-center">
-                    <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-semibold">Active</span>
-                  </td>
-                </tr>
-                <tr className="border-b hover:bg-purple-50 transition">
-                  <td className="px-6 py-4 font-semibold text-gray-900">💼 Freelancers</td>
-                  <td className="px-6 py-4 text-center text-gray-700">{platformStats.freelancers}</td>
-                  <td className="px-6 py-4 text-center text-purple-600 font-semibold">
-                    {((platformStats.freelancers / platformStats.total_users) * 100).toFixed(1)}%
-                  </td>
-                  <td className="px-6 py-4 text-center text-gray-700">{userGrowth.by_role.freelancers}</td>
-                  <td className="px-6 py-4 text-center">
-                    <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-semibold">Active</span>
-                  </td>
-                </tr>
-                <tr className="border-b hover:bg-orange-50 transition">
-                  <td className="px-6 py-4 font-semibold text-gray-900">🎓 Consultants</td>
-                  <td className="px-6 py-4 text-center text-gray-700">{platformStats.consultants}</td>
-                  <td className="px-6 py-4 text-center text-orange-600 font-semibold">
-                    {((platformStats.consultants / platformStats.total_users) * 100).toFixed(1)}%
-                  </td>
-                  <td className="px-6 py-4 text-center text-gray-700">{userGrowth.by_role.consultants}</td>
-                  <td className="px-6 py-4 text-center">
-                    <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">Active</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* User Distribution Pie Chart */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h3 className="text-xl font-bold text-gray-900 mb-6">User Distribution by Role</h3>
-          <div className="flex justify-center">
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={[
-                    { name: 'Clients', value: platformStats.clients, fill: '#10b981' },
-                    { name: 'Freelancers', value: platformStats.freelancers, fill: '#a855f7' },
-                    { name: 'Consultants', value: platformStats.consultants, fill: '#f97316' }
-                  ]}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={100}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  <Cell fill="#10b981" />
-                  <Cell fill="#a855f7" />
-                  <Cell fill="#f97316" />
-                </Pie>
-                <Tooltip formatter={(value) => value} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Monthly Revenue Bar Chart */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h3 className="text-xl font-bold text-gray-900 mb-6">Monthly Revenue (Last 12 Months)</h3>
-          <div className="flex justify-center">
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={monthlyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" angle={-45} textAnchor="end" height={80} />
-                <YAxis />
-                <Tooltip formatter={(value) => `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
-                <Bar dataKey="amount" fill="#3b82f6" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* User Growth Line Chart */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h3 className="text-xl font-bold text-gray-900 mb-6">User Growth Trends (Last 12 Months)</h3>
-          <div className="flex justify-center">
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={userGrowthData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="week" angle={-45} textAnchor="end" height={80} />
-                <YAxis yAxisId="left" label={{ value: 'Total Users', angle: -90, position: 'insideLeft' }} />
-                <YAxis yAxisId="right" orientation="right" label={{ value: 'New Users', angle: 90, position: 'insideRight' }} />
-                <Tooltip />
-                <Legend />
-                <Line yAxisId="left" type="monotone" dataKey="total_users" stroke="#3b82f6" strokeWidth={2} name="Total Users" dot={false} />
-                <Line yAxisId="right" type="monotone" dataKey="new_users" stroke="#10b981" strokeWidth={2} name="New Users This Week" dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Project Stats */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">Project Status</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
-              <p className="text-gray-600 text-sm">Active Projects</p>
-              <p className="text-3xl font-bold text-orange-900">{platformStats.active_projects}</p>
-            </div>
-            <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-              <p className="text-gray-600 text-sm">Completed Projects</p>
-              <p className="text-3xl font-bold text-green-900">{platformStats.completed_projects}</p>
-            </div>
-            <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
-              <p className="text-gray-600 text-sm">Avg Project Budget</p>
-              <p className="text-3xl font-bold text-indigo-900">₹{Number(platformStats.avg_project_budget).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Payment Stats */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">Payment Statistics</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
-              <p className="text-gray-600 text-sm">Total Payments (Completed)</p>
-              <p className="text-3xl font-bold text-emerald-900">₹{Number(platformStats.total_payments).toLocaleString('en-IN')}</p>
-            </div>
-            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-gray-600 text-sm">Total Transactions</p>
-              <p className="text-3xl font-bold text-blue-900">{platformStats.total_transactions}</p>
-            </div>
-            <div className="p-4 bg-cyan-50 rounded-lg border border-cyan-200">
-              <p className="text-gray-600 text-sm">Avg Transaction</p>
-              <p className="text-3xl font-bold text-cyan-900">
-                ₹{platformStats.total_transactions > 0 ? Number(platformStats.total_payments / platformStats.total_transactions).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : 0}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Growth Stats */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">User Growth</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 bg-pink-50 rounded-lg border border-pink-200">
-              <p className="text-gray-600 text-sm">New Users This Month</p>
-              <p className="text-3xl font-bold text-pink-900">{userGrowth.new_users_this_month}</p>
-            </div>
-            <div className="p-4 bg-red-50 rounded-lg border border-red-200">
-              <p className="text-gray-600 text-sm">New Users This Week</p>
-              <p className="text-3xl font-bold text-red-900">{userGrowth.new_users_this_week}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Recent Activity Timeline */}
-        <div className="bg-white rounded-lg shadow p-6 mt-8">
-          <h3 className="text-xl font-bold text-gray-900 mb-6">Recent Transactions</h3>
-          <div className="space-y-4">
-            {recentTransactions.length > 0 ? (
-              recentTransactions.map((transaction, idx) => (
-                <div key={idx} className="flex items-start gap-4 pb-4 border-b last:border-b-0">
-                  <div className="flex-shrink-0">
-                    <div className="flex items-center justify-center h-10 w-10 rounded-full bg-green-100">
-                      <span className="text-green-600 font-bold">₹</span>
+          {/* Top Performers */}
+          <div className="mt-5 grid gap-5 border-t border-slate-100 pt-5 md:grid-cols-2">
+            <div>
+              <p className="mb-3 text-sm font-black text-slate-950">Top Freelancers</p>
+              <div className="space-y-2">
+                {kpis.top_freelancers.length > 0 ? kpis.top_freelancers.map((f, i) => (
+                  <div key={i} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                    <div>
+                      <p className="text-sm font-black text-slate-900">{i + 1}. {f.username}</p>
+                      <p className="text-xs text-slate-500">{f.projects_completed} projects</p>
                     </div>
+                    <span className="text-sm font-black text-violet-600">₹{Number(f.earned).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
                   </div>
-                  <div className="flex-grow min-w-0">
-                    <p className="text-sm font-semibold text-gray-900">
-                      Payment of ₹{Number(transaction.amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
-                    </p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      From <span className="font-semibold">{transaction.client}</span> to <span className="font-semibold">{transaction.freelancer}</span>
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Project: {transaction.project}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {transaction.date} at {transaction.time}
-                    </p>
+                )) : <p className="text-sm text-slate-400">No data yet</p>}
+              </div>
+            </div>
+            <div>
+              <p className="mb-3 text-sm font-black text-slate-950">Top Consultants</p>
+              <div className="space-y-2">
+                {kpis.top_consultants.length > 0 ? kpis.top_consultants.map((c, i) => (
+                  <div key={i} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                    <div>
+                      <p className="text-sm font-black text-slate-900">{i + 1}. {c.username}</p>
+                      <p className="text-xs text-slate-500">{c.sessions_completed} sessions</p>
+                    </div>
+                    <span className="text-sm font-black text-amber-600">₹{Number(c.earned).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
                   </div>
-                  <div className="flex-shrink-0">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      ✓ Completed
-                    </span>
-                  </div>
+                )) : <p className="text-sm text-slate-400">No data yet</p>}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── User Role Breakdown ── */}
+      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <p className="mb-5 font-black text-slate-950">User Role Breakdown</p>
+        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+          {[
+            { label: 'Clients',     count: platformStats.clients,     color: 'text-blue-600',   border: 'border-blue-100',   bg: 'bg-blue-50' },
+            { label: 'Freelancers', count: platformStats.freelancers,  color: 'text-violet-600', border: 'border-violet-100', bg: 'bg-violet-50' },
+            { label: 'Consultants', count: platformStats.consultants,  color: 'text-amber-600',  border: 'border-amber-100',  bg: 'bg-amber-50' },
+            { label: 'Total',       count: platformStats.total_users,  color: 'text-slate-700',  border: 'border-slate-200',  bg: 'bg-slate-50' },
+          ].map(({ label, count, color, border, bg }) => (
+            <div key={label} className={`rounded-xl border ${border} ${bg} p-5 text-center`}>
+              <p className={`text-3xl font-black ${color}`}>{count}</p>
+              <p className="mt-1 text-sm font-black text-slate-600">{label}</p>
+              {label !== 'Total' && (
+                <p className="mt-0.5 text-xs text-slate-400">
+                  {((count / platformStats.total_users) * 100).toFixed(1)}% of total
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-5 overflow-x-auto border-t border-slate-100 pt-5">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-100">
+                {['Role', 'Total', '%', 'New This Month', ''].map(h => (
+                  <th key={h} className="px-4 py-2 text-left text-xs font-black uppercase tracking-wide text-slate-500">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {[
+                { icon: '👤', role: 'Clients',     count: platformStats.clients,    new: userGrowth.by_role.clients,     badge: 'bg-blue-100 text-blue-700' },
+                { icon: '💼', role: 'Freelancers', count: platformStats.freelancers, new: userGrowth.by_role.freelancers, badge: 'bg-violet-100 text-violet-700' },
+                { icon: '🎓', role: 'Consultants', count: platformStats.consultants, new: userGrowth.by_role.consultants, badge: 'bg-amber-100 text-amber-700' },
+              ].map(({ icon, role, count, new: newCount, badge }) => (
+                <tr key={role} className="hover:bg-slate-50 transition">
+                  <td className="px-4 py-3 font-black text-slate-900">{icon} {role}</td>
+                  <td className="px-4 py-3 font-semibold text-slate-700">{count}</td>
+                  <td className="px-4 py-3 font-semibold text-slate-500">{((count / platformStats.total_users) * 100).toFixed(1)}%</td>
+                  <td className="px-4 py-3 font-semibold text-slate-700">+{newCount}</td>
+                  <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-black ${badge}`}>Active</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ── Charts row ── */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Pie chart */}
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <p className="mb-4 font-black text-slate-950">User Distribution</p>
+          <ResponsiveContainer width="100%" height={260}>
+            <PieChart>
+              <Pie data={[
+                { name: 'Clients', value: platformStats.clients },
+                { name: 'Freelancers', value: platformStats.freelancers },
+                { name: 'Consultants', value: platformStats.consultants },
+              ]} cx="50%" cy="50%" outerRadius={90} dataKey="value"
+                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                <Cell fill="#3b82f6" />
+                <Cell fill="#7c3aed" />
+                <Cell fill="#d97706" />
+              </Pie>
+              <Tooltip formatter={(v) => v} />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Project + Payment mini stats */}
+        <div className="space-y-4">
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="mb-4 font-black text-slate-950">Project Status</p>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: 'Active',    value: platformStats.active_projects,    color: 'text-amber-600' },
+                { label: 'Completed', value: platformStats.completed_projects,  color: 'text-emerald-600' },
+                { label: 'Avg Budget',value: `₹${Number(platformStats.avg_project_budget).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, color: 'text-blue-600' },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-center">
+                  <p className={`text-lg font-black ${color}`}>{value}</p>
+                  <p className="mt-0.5 text-xs text-slate-500">{label}</p>
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-8 text-gray-500">No recent transactions</div>
-            )}
+              ))}
+            </div>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="mb-4 font-black text-slate-950">Payments</p>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: 'Total Paid',     value: `₹${Number(platformStats.total_payments).toLocaleString('en-IN')}`, color: 'text-emerald-600' },
+                { label: 'Transactions',   value: platformStats.total_transactions,                                    color: 'text-blue-600' },
+                { label: 'Avg',            value: `₹${platformStats.total_transactions > 0 ? Number(platformStats.total_payments / platformStats.total_transactions).toLocaleString('en-IN', { maximumFractionDigits: 0 }) : 0}`, color: 'text-violet-600' },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-center">
+                  <p className={`text-lg font-black ${color}`}>{value}</p>
+                  <p className="mt-0.5 text-xs text-slate-500">{label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="mb-4 font-black text-slate-950">User Growth</p>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { label: 'This Month', value: userGrowth.new_users_this_month, color: 'text-blue-600' },
+                { label: 'This Week',  value: userGrowth.new_users_this_week,  color: 'text-violet-600' },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-center">
+                  <p className={`text-2xl font-black ${color}`}>+{value}</p>
+                  <p className="mt-0.5 text-xs text-slate-500">{label}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  )
-}
 
-function StatCard({ title, value, icon }) {
-  return (
-    <div className="bg-white rounded-lg shadow p-6 border-l-4 border-indigo-600">
-      <p className="text-3xl mb-2">{icon}</p>
-      <p className="text-gray-600 text-sm mb-1">{title}</p>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
+      {/* ── Monthly Revenue Chart ── */}
+      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <p className="mb-4 font-black text-slate-950">Monthly Revenue — Last 12 Months</p>
+        <ResponsiveContainer width="100%" height={280}>
+          <BarChart data={monthlyData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <XAxis dataKey="month" angle={-45} textAnchor="end" height={70} tick={{ fontSize: 11 }} />
+            <YAxis tick={{ fontSize: 11 }} />
+            <Tooltip formatter={(v) => `₹${Number(v).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`} />
+            <Bar dataKey="amount" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* ── User Growth Chart ── */}
+      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <p className="mb-4 font-black text-slate-950">User Growth Trends — Last 12 Months</p>
+        <ResponsiveContainer width="100%" height={280}>
+          <LineChart data={userGrowthData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <XAxis dataKey="week" angle={-45} textAnchor="end" height={70} tick={{ fontSize: 11 }} />
+            <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
+            <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} />
+            <Tooltip />
+            <Legend />
+            <Line yAxisId="left" type="monotone" dataKey="total_users" stroke="#3b82f6" strokeWidth={2} name="Total Users" dot={false} />
+            <Line yAxisId="right" type="monotone" dataKey="new_users" stroke="#10b981" strokeWidth={2} name="New Users" dot={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* ── Recent Transactions ── */}
+      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <p className="mb-5 font-black text-slate-950">Recent Transactions</p>
+        {recentTransactions.length > 0 ? (
+          <div className="divide-y divide-slate-100">
+            {recentTransactions.map((t, i) => (
+              <div key={i} className="flex items-start gap-4 py-4 first:pt-0 last:pb-0">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-sm font-black text-emerald-600">₹</div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-black text-slate-900">₹{Number(t.amount).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
+                  <p className="text-xs text-slate-500">
+                    <span className="font-semibold text-slate-700">{t.client}</span> → <span className="font-semibold text-slate-700">{t.freelancer}</span>
+                    {t.project && ` · ${t.project}`}
+                  </p>
+                  <p className="text-xs text-slate-400">{t.date} {t.time}</p>
+                </div>
+                <span className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-black text-emerald-700">Completed</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="py-8 text-center text-sm text-slate-400">No recent transactions</p>
+        )}
+      </div>
     </div>
   )
 }
