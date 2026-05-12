@@ -1,12 +1,14 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { FaUser, FaLock, FaEye, FaEyeSlash, FaArrowRight, FaCircleCheck } from 'react-icons/fa6'
 import { useAuth } from '../hooks/useAuth'
 
 export default function Login() {
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const { login, isAuthenticated } = useAuth()
+
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />
 
   const [formData, setFormData] = useState({ username: '', password: '' })
   const [errors, setErrors] = useState({})

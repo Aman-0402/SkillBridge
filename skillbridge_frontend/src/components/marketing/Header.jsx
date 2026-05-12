@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import { NavLink, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FaBars, FaXmark } from 'react-icons/fa6'
+import { FaBars, FaXmark, FaTableColumns } from 'react-icons/fa6'
 import logo from '../../assets/newlogo.png'
 import { navLinks } from '../../data'
 import Button from '../ui/Button'
+import { useAuth } from '../../hooks/useAuth'
 
 function Header() {
   const [open, setOpen] = useState(false)
+  const { isAuthenticated } = useAuth()
 
   return (
     <header className="pointer-events-none sticky top-0 z-40 px-3 py-4 sm:px-5">
@@ -40,12 +42,20 @@ function Header() {
         </nav>
 
         <div className="hidden items-center gap-3 md:flex">
-          <Button to="/register" variant="secondary" className="border-white bg-white px-4 py-2 text-slate-950 hover:bg-slate-100 hover:border-slate-100">
-            Signup
-          </Button>
-          <Button to="/login" className="bg-blue-600 px-4 py-2 text-white shadow-blue-600/30 hover:bg-blue-500">
-            Login
-          </Button>
+          {isAuthenticated ? (
+            <Button to="/dashboard" className="flex items-center gap-2 bg-blue-600 px-4 py-2 text-white shadow-blue-600/30 hover:bg-blue-500">
+              <FaTableColumns className="text-xs" /> Dashboard
+            </Button>
+          ) : (
+            <>
+              <Button to="/register" variant="secondary" className="border-white bg-white px-4 py-2 text-slate-950 hover:bg-slate-100 hover:border-slate-100">
+                Signup
+              </Button>
+              <Button to="/login" className="bg-blue-600 px-4 py-2 text-white shadow-blue-600/30 hover:bg-blue-500">
+                Login
+              </Button>
+            </>
+          )}
         </div>
 
         <button
@@ -83,13 +93,21 @@ function Header() {
                 </NavLink>
               ))}
             </nav>
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <Button to="/register" variant="secondary" className="border-slate-500 bg-slate-700 py-2 text-white hover:bg-slate-600 hover:border-slate-400" onClick={() => setOpen(false)}>
-                Signup
-              </Button>
-              <Button to="/login" className="bg-blue-600 py-2 text-white hover:bg-blue-500" onClick={() => setOpen(false)}>
-                Login
-              </Button>
+            <div className="mt-4 grid gap-3" style={{ gridTemplateColumns: isAuthenticated ? '1fr' : '1fr 1fr' }}>
+              {isAuthenticated ? (
+                <Button to="/dashboard" className="flex items-center justify-center gap-2 bg-blue-600 py-2 text-white hover:bg-blue-500" onClick={() => setOpen(false)}>
+                  <FaTableColumns className="text-xs" /> Go to Dashboard
+                </Button>
+              ) : (
+                <>
+                  <Button to="/register" variant="secondary" className="border-slate-500 bg-slate-700 py-2 text-white hover:bg-slate-600 hover:border-slate-400" onClick={() => setOpen(false)}>
+                    Signup
+                  </Button>
+                  <Button to="/login" className="bg-blue-600 py-2 text-white hover:bg-blue-500" onClick={() => setOpen(false)}>
+                    Login
+                  </Button>
+                </>
+              )}
             </div>
           </motion.div>
         ) : null}

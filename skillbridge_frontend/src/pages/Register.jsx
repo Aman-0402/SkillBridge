@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, Navigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash,
@@ -32,7 +32,9 @@ const roleCards = [
 
 export default function Register() {
   const navigate = useNavigate()
-  const { register } = useAuth()
+  const { register, isAuthenticated } = useAuth()
+
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />
 
   const [step, setStep] = useState(1)
   const [selectedRole, setSelectedRole] = useState(null)
