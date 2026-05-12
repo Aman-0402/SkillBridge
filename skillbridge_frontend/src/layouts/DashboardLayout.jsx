@@ -36,8 +36,8 @@ function DashboardLayout() {
     <div className="min-h-screen bg-slate-100 text-slate-950 lg:grid lg:grid-cols-[280px_1fr]">
       <ScrollToTop />
       <aside className="sticky top-0 z-30 hidden h-screen overflow-y-auto border-r border-white/10 bg-slate-950 px-4 py-5 text-white lg:block">
-        <NavLink to="/" className="mb-8 block rounded-lg bg-white p-3">
-          <img src={logoBw} alt="ConsultME" className="h-14 w-auto object-contain" />
+        <NavLink to="/" className="mb-8 block px-2">
+          <img src={logoBw} alt="ConsultME" className="h-14 w-auto object-contain" style={{ mixBlendMode: 'screen' }} />
         </NavLink>
         <nav className="space-y-2">
           {sidebarLinks.map((link) => {
