@@ -51,52 +51,47 @@ export default function AdminDashboard() {
 
   if (user?.role !== 'admin' || !user?.is_staff) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
-          <p className="text-gray-600">Only admin users can access this page</p>
-          <Link to="/dashboard" className="text-indigo-600 hover:text-indigo-700 mt-4 inline-block">
-            Back to Dashboard
-          </Link>
-        </div>
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <p className="text-4xl font-black text-slate-200">403</p>
+        <p className="mt-2 font-black text-slate-700">Access Denied</p>
+        <p className="mt-1 text-sm text-slate-500">Only admin staff can view this page.</p>
+        <Link to="/dashboard" className="mt-4 text-sm font-black text-blue-600 hover:underline">← Back to Dashboard</Link>
       </div>
     )
   }
 
-  if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>
+  if (loading) return <div className="flex justify-center items-center py-32 text-slate-400">Loading…</div>
   if (error) return (
-    <div className="flex justify-center items-center h-screen">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold text-red-600 mb-4">Error Loading Dashboard</h2>
-        <p className="text-gray-600 mb-4">{error}</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded"
-        >
-          Retry
-        </button>
-      </div>
+    <div className="flex flex-col items-center justify-center py-24 text-center">
+      <p className="font-black text-rose-600">Failed to load analytics</p>
+      <p className="mt-1 text-sm text-slate-500">{error}</p>
+      <button onClick={fetchStats} className="mt-4 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-black text-white hover:bg-blue-500">
+        Retry
+      </button>
     </div>
   )
-  if (!stats) return <div className="text-center py-8 text-gray-600">No statistics available</div>
+  if (!stats) return <div className="py-16 text-center text-sm text-slate-500">No statistics available</div>
 
   const platformStats = stats.platform_stats
   const userGrowth = stats.user_growth
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <Link to="/dashboard" className="text-gray-600 hover:text-gray-900 text-xl">← Back</Link>
-            <h1 className="text-2xl font-bold text-indigo-600">ConsultME Admin</h1>
-          </div>
-          <Link to="/admin/panel" className="text-indigo-600 hover:text-indigo-700 font-semibold">Control Panel</Link>
+    <div className="space-y-6">
+      {/* Page header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">Admin</p>
+          <h1 className="mt-1 text-2xl font-black text-slate-950">Platform Analytics</h1>
         </div>
-      </nav>
+        <Link
+          to="/admin/panel"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-black text-slate-700 shadow-sm transition hover:border-blue-300 hover:text-blue-600"
+        >
+          Control Panel →
+        </Link>
+      </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-8">Platform Analytics</h2>
+      <div className="space-y-6">
 
         {/* Platform Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
