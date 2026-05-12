@@ -1,110 +1,153 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { FaFolderPlus, FaFolderOpen, FaMagnifyingGlass } from 'react-icons/fa6'
 import api from '../services/api'
 import { useAuth } from '../hooks/useAuth'
+
+const STATUS_STYLES = {
+  open:        'bg-blue-50 text-blue-700',
+  in_progress: 'bg-indigo-50 text-indigo-700',
+  completed:   'bg-emerald-50 text-emerald-700',
+  draft:       'bg-slate-100 text-slate-600',
+  closed:      'bg-rose-50 text-rose-600',
+}
+
+function ProjectCardSkeleton() {
+  return (
+    <div className="animate-pulse rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 space-y-2">
+          <div className="h-5 w-2/3 rounded bg-slate-200" />
+          <div className="h-3 w-full rounded bg-slate-100" />
+          <div className="h-3 w-4/5 rounded bg-slate-100" />
+        </div>
+        <div className="h-6 w-20 shrink-0 rounded-lg bg-slate-200" />
+      </div>
+      <div className="mt-4 flex gap-6">
+        <div className="h-3 w-24 rounded bg-slate-100" />
+        <div className="h-3 w-20 rounded bg-slate-100" />
+        <div className="h-3 w-16 rounded bg-slate-100" />
+      </div>
+    </div>
+  )
+}
 
 export default function Projects() {
   const { user } = useAuth()
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
-  const [refresh, setRefresh] = useState(0)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
-    fetchProjects()
-  }, [filter, refresh])
-
-  const fetchProjects = async () => {
     setLoading(true)
-    try {
-      const url = filter === 'my_projects' ? '/projects/my_projects/' : '/projects/'
-      const response = await api.get(url)
-      setProjects(Array.isArray(response.data) ? response.data : response.data.results || [])
-    } catch (error) {
-      console.error('Failed to fetch projects:', error)
-      setProjects([])
-    } finally {
-      setLoading(false)
-    }
-  }
+    const url = filter === 'my_projects' ? '/projects/my_projects/' : '/projects/'
+    api.get(url)
+      .then(res => setProjects(Array.isArray(res.data) ? res.data : res.data.results || []))
+      .catch(() => setProjects([]))
+      .finally(() => setLoading(false))
+  }, [filter])
 
-  const handleFilterChange = (newFilter) => {
-    setFilter(newFilter)
-    setRefresh(prev => prev + 1)
-  }
+  const isClient = user?.role === 'client' || user?.role === 'admin'
+
+  const filtered = projects.filter(p =>
+    !search || p.title?.toLowerCase().includes(search.toLowerCase()) ||
+    p.category?.toLowerCase().includes(search.toLowerCase())
+  )
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-indigo-600">ConsultME</h1>
-          <div className="space-x-4">
-            <Link to="/dashboard" className="text-gray-600 hover:text-gray-900">Dashboard</Link>
-            <Link to="/profile" className="text-gray-600 hover:text-gray-900">Profile</Link>
-          </div>
+    <div className="space-y-6">
+      {/* Page header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">Browse</p>
+          <h1 className="mt-1 text-2xl font-black text-slate-950">Projects</h1>
         </div>
-      </nav>
+        {isClient && (
+          <Link
+            to="/create-project"
+            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-black text-white shadow-[0_8px_24px_rgba(37,99,235,0.25)] transition hover:-translate-y-0.5 hover:bg-blue-500"
+          >
+            <FaFolderPlus /> Post a Project
+          </Link>
+        )}
+      </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-3xl font-bold text-gray-900">Projects</h2>
-          {(user?.role === 'client' || user?.role === 'admin') && (
-            <Link to="/create-project" className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-semibold">
+      {/* Filters + search */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex gap-2">
+          {['all', ...(isClient ? ['my_projects'] : [])].map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`rounded-xl px-4 py-2 text-sm font-black transition ${
+                filter === f
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'border border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-600'
+              }`}
+            >
+              {f === 'all' ? 'All Projects' : 'My Projects'}
+            </button>
+          ))}
+        </div>
+        <div className="relative">
+          <FaMagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search by title or category..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100 sm:w-72"
+          />
+        </div>
+      </div>
+
+      {/* List */}
+      {loading ? (
+        <div className="space-y-4">
+          {Array.from({ length: 5 }).map((_, i) => <ProjectCardSkeleton key={i} />)}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-slate-300 bg-white py-16 text-center">
+          <FaFolderOpen className="text-4xl text-slate-300" />
+          <div>
+            <p className="font-black text-slate-700">No projects found</p>
+            <p className="mt-1 text-sm text-slate-400">
+              {search ? 'Try a different search term.' : isClient ? 'Post your first project to get started.' : 'Check back soon for new opportunities.'}
+            </p>
+          </div>
+          {isClient && !search && (
+            <Link to="/create-project" className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-black text-white hover:bg-blue-500">
               Post a Project
             </Link>
           )}
         </div>
-
-        <div className="mb-6 space-x-4">
-          <button
-            onClick={() => handleFilterChange('all')}
-            className={`px-4 py-2 rounded ${filter === 'all' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-800'}`}
-          >
-            All Projects
-          </button>
-          {user?.role === 'client' && (
-            <button
-              onClick={() => handleFilterChange('my_projects')}
-              className={`px-4 py-2 rounded ${filter === 'my_projects' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-800'}`}
-            >
-              My Projects
-            </button>
-          )}
-        </div>
-
-        {loading ? (
-          <div className="text-center py-8">Loading...</div>
-        ) : projects.length === 0 ? (
-          <div className="text-center py-8 text-gray-600">No projects found</div>
-        ) : (
-          <div className="space-y-4">
-            {projects.map(project => (
-              <Link key={project.id} to={`/projects/${project.id}`}>
-                <div className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition">
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">{project.title}</h3>
-                  <p className="text-gray-600 mb-4 line-clamp-3 whitespace-pre-wrap">{project.description}</p>
-                  <div className="flex justify-between items-center">
-                    <div className="space-y-1">
-                      <p className="text-sm text-gray-600">Budget: <span className="font-semibold text-gray-900">${project.budget}</span></p>
-                      <p className="text-sm text-gray-600">Category: <span className="font-semibold">{project.category}</span></p>
-                    </div>
-                    <div className="text-right">
-                      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                        project.status === 'open' ? 'bg-green-100 text-green-800' :
-                        project.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {project.status}
-                      </span>
-                      <p className="text-sm text-gray-600 mt-2">{project.proposal_count} proposals</p>
-                    </div>
+      ) : (
+        <div className="space-y-4">
+          {filtered.map(project => (
+            <Link key={project.id} to={`/projects/${project.id}`} className="block">
+              <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-blue-300 hover:shadow-md">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="truncate text-base font-black text-slate-950">{project.title}</h3>
+                    <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-500">{project.description}</p>
                   </div>
+                  <span className={`shrink-0 self-start rounded-lg px-3 py-1 text-xs font-black capitalize ${STATUS_STYLES[project.status] || 'bg-slate-100 text-slate-600'}`}>
+                    {project.status?.replace('_', ' ')}
+                  </span>
                 </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
+                <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs font-semibold text-slate-500">
+                  <span>₹{Number(project.budget).toLocaleString('en-IN')} · {project.budget_type}</span>
+                  {project.category && <span>📁 {project.category}</span>}
+                  {project.duration && <span>⏱ {project.duration}</span>}
+                  <span>{project.proposal_count ?? 0} proposal{project.proposal_count !== 1 ? 's' : ''}</span>
+                  {project.client?.username && <span>by {project.client.username}</span>}
+                </div>
+              </article>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
