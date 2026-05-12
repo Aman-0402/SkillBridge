@@ -75,9 +75,7 @@ function Footer() {
             transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
             className="rounded-2xl border border-white/10 bg-white/[0.06] p-6 shadow-[0_22px_70px_rgba(15,23,42,0.32)] backdrop-blur-xl transition duration-500 hover:-translate-y-1 hover:bg-white/[0.09] hover:shadow-[0_32px_90px_rgba(37,99,235,0.18)]"
           >
-            <div className="inline-flex rounded-xl bg-white p-3 shadow-lg shadow-blue-950/20">
-              <img src={logo} alt="ConsultME" className="h-14 w-auto" />
-            </div>
+            <img src={logo} alt="ConsultME" className="h-14 w-auto" style={{ mixBlendMode: 'screen' }} />
             <p className="mt-5 text-sm leading-7 text-blue-50">
               ConsultME is your partner in smart, AI-powered business consulting, helping individuals and companies grow with innovation-driven expert guidance.
             </p>
