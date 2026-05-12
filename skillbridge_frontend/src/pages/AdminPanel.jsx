@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import Swal from 'sweetalert2'
 import api from '../services/api'
 import { useAuth } from '../hooks/useAuth'
 
@@ -41,9 +42,16 @@ export default function AdminPanel() {
   }
 
   const handleDelete = async (tab, id) => {
-    if (!window.confirm(`Are you sure you want to delete this ${tab.slice(0, -1)}?`)) {
-      return
-    }
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: `This ${tab.slice(0, -1)} will be permanently deleted.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Yes, delete it',
+    })
+    if (!result.isConfirmed) return
 
     try {
       const deleteEndpoints = {
@@ -54,12 +62,27 @@ export default function AdminPanel() {
         jobs: `/chat/admin/delete_project/?project_id=${id}`,
         consultations: `/chat/admin/delete_consultation/?consultation_id=${id}`
       }
-
       await api.delete(deleteEndpoints[tab])
       fetchData(tab)
+      Swal.fire({ icon: 'success', title: 'Deleted!', timer: 1500, showConfirmButton: false })
     } catch (error) {
-      console.error('Failed to delete:', error)
-      alert('Failed to delete. Please try again.')
+      Swal.fire({ icon: 'error', title: 'Failed', text: 'Could not delete. Please try again.' })
+    }
+  }
+
+  const handleToggleFeatured = async (userId, currentStatus) => {
+    try {
+      const res = await api.post(`/auth/toggle-featured/${userId}/`)
+      setData(prev => prev.map(u => u.id === userId ? { ...u, is_featured: res.data.is_featured } : u))
+      Swal.fire({
+        icon: 'success',
+        title: res.data.is_featured ? '⭐ Featured!' : 'Unfeatured',
+        text: res.data.is_featured ? 'Consultant will appear in Featured section.' : 'Removed from Featured section.',
+        timer: 1800,
+        showConfirmButton: false,
+      })
+    } catch {
+      Swal.fire({ icon: 'error', title: 'Failed', text: 'Could not update featured status.' })
     }
   }
 
@@ -95,7 +118,7 @@ export default function AdminPanel() {
     if (!data.length) return <div className="text-center py-8 text-gray-600">No data found</div>
 
     const columns = {
-      users: ['username', 'email', 'role', 'is_staff', 'date_joined'],
+      users: ['username', 'email', 'role', 'is_featured', 'is_staff', 'date_joined'],
       projects: ['title', 'client', 'budget', 'status', 'created_at'],
       proposals: ['project', 'freelancer', 'bid_amount', 'status', 'created_at'],
       payments: ['project', 'freelancer', 'amount', 'status', 'created_at'],
@@ -119,16 +142,34 @@ export default function AdminPanel() {
               <tr key={idx} className="border-b hover:bg-gray-50">
                 {columns[activeTab]?.map(col => (
                   <td key={col} className="px-4 py-2">
-                    {typeof item[col] === 'object' ? JSON.stringify(item[col]) : String(item[col] || '-')}
+                    {col === 'is_featured' ? (
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${item.is_featured ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
+                        {item.is_featured ? '⭐ Featured' : 'No'}
+                      </span>
+                    ) : typeof item[col] === 'object' ? JSON.stringify(item[col]) : String(item[col] || '-')}
                   </td>
                 ))}
                 <td className="px-4 py-2">
-                  <button
-                    onClick={() => handleDelete(activeTab, item.id)}
-                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs"
-                  >
-                    Delete
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {activeTab === 'users' && ['consultant', 'freelancer'].includes(item.role) && (
+                      <button
+                        onClick={() => handleToggleFeatured(item.id, item.is_featured)}
+                        className={`px-3 py-1 rounded text-xs font-bold transition ${
+                          item.is_featured
+                            ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                            : 'bg-slate-100 text-slate-600 hover:bg-amber-100 hover:text-amber-700'
+                        }`}
+                      >
+                        {item.is_featured ? '★ Unfeature' : '☆ Feature'}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDelete(activeTab, item.id)}
+                      className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

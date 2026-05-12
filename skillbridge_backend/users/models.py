@@ -14,6 +14,7 @@ class User(AbstractUser):
     profile_image = models.ImageField(upload_to='profiles/', blank=True, null=True)
     hourly_rate = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     is_verified = models.BooleanField(default=False)
+    is_featured = models.BooleanField(default=False)
     verification_token = models.CharField(max_length=255, blank=True, null=True)
     location = models.CharField(max_length=255, blank=True, null=True)
     portfolio_url = models.URLField(blank=True, null=True)

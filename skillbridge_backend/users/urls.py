@@ -1,7 +1,11 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from .views import RegisterView, ProfileView, ChangePasswordView, SkillViewSet, ExperienceViewSet, PublicProfileView
+from .views import (
+    RegisterView, ProfileView, ChangePasswordView,
+    SkillViewSet, ExperienceViewSet, PublicProfileView,
+    featured_consultants, toggle_featured,
+)
 
 router = DefaultRouter()
 router.register(r'skills', SkillViewSet, basename='skill')
@@ -14,5 +18,7 @@ urlpatterns = [
     path('profile/', ProfileView.as_view(), name='profile'),
     path('change-password/', ChangePasswordView.as_view(), name='change_password'),
     path('profile/<str:username>/', PublicProfileView.as_view(), name='public_profile'),
+    path('featured-consultants/', featured_consultants, name='featured_consultants'),
+    path('toggle-featured/<int:user_id>/', toggle_featured, name='toggle_featured'),
     path('', include(router.urls)),
 ]
