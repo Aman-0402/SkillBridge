@@ -60,7 +60,35 @@ export default function AdminDashboard() {
     )
   }
 
-  if (loading) return <div className="flex justify-center items-center py-32 text-slate-400">Loading…</div>
+  if (loading) return (
+    <div className="space-y-6">
+      {/* Header skeleton */}
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <div className="h-3 w-16 animate-pulse rounded bg-slate-200" />
+          <div className="h-7 w-48 animate-pulse rounded-lg bg-slate-200" />
+        </div>
+        <div className="h-10 w-36 animate-pulse rounded-xl bg-slate-200" />
+      </div>
+      {/* Stat cards skeleton */}
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="animate-pulse rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="h-3 w-24 rounded bg-slate-100" />
+            <div className="mt-3 h-8 w-16 rounded-lg bg-slate-200" />
+            <div className="mt-2 h-3 w-20 rounded bg-slate-100" />
+          </div>
+        ))}
+      </div>
+      {/* Chart skeletons */}
+      {[300, 260, 280].map((h, i) => (
+        <div key={i} className="animate-pulse rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-5 h-5 w-48 rounded bg-slate-200" />
+          <div className={`w-full rounded-lg bg-slate-100`} style={{ height: h }} />
+        </div>
+      ))}
+    </div>
+  )
   if (error) return (
     <div className="flex flex-col items-center justify-center py-24 text-center">
       <p className="font-black text-rose-600">Failed to load analytics</p>
