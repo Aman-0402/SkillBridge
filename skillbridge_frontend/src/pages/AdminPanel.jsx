@@ -4,6 +4,117 @@ import Swal from 'sweetalert2'
 import api from '../services/api'
 import { useAuth } from '../hooks/useAuth'
 
+/* ─── KYC Panel ─────────────────────────────────────────── */
+function KYCPanel() {
+  const [kycList, setKycList] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  const fetchKYC = () => {
+    setLoading(true)
+    api.get('/auth/kyc/pending/')
+      .then(res => setKycList(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setKycList([]))
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => { fetchKYC() }, [])
+
+  const handleApprove = async (userId, username) => {
+    const result = await Swal.fire({
+      title: `Approve KYC for @${username}?`,
+      text: 'This will mark the user as verified.',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#16a34a',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Approve',
+    })
+    if (!result.isConfirmed) return
+    try {
+      await api.post(`/auth/kyc/approve/${userId}/`)
+      Swal.fire({ icon: 'success', title: 'Approved!', text: `@${username} is now verified.`, timer: 1800, showConfirmButton: false })
+      fetchKYC()
+    } catch {
+      Swal.fire({ icon: 'error', title: 'Failed', text: 'Could not approve KYC.' })
+    }
+  }
+
+  const handleReject = async (userId, username) => {
+    const { value: reason, isConfirmed } = await Swal.fire({
+      title: `Reject KYC for @${username}?`,
+      input: 'textarea',
+      inputLabel: 'Rejection reason (required)',
+      inputPlaceholder: 'e.g. Document number unclear, unable to verify identity...',
+      inputValidator: v => !v.trim() && 'Please provide a reason.',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Reject',
+    })
+    if (!isConfirmed || !reason) return
+    try {
+      await api.post(`/auth/kyc/reject/${userId}/`, { reason })
+      Swal.fire({ icon: 'success', title: 'Rejected', timer: 1500, showConfirmButton: false })
+      fetchKYC()
+    } catch {
+      Swal.fire({ icon: 'error', title: 'Failed', text: 'Could not reject KYC.' })
+    }
+  }
+
+  if (loading) return <div className="py-8 text-center text-sm text-gray-500">Loading KYC requests…</div>
+  if (!kycList.length) return (
+    <div className="py-12 text-center text-sm text-gray-500">
+      No pending KYC requests.
+    </div>
+  )
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead className="bg-gray-200">
+          <tr>
+            {['User', 'Role', 'Document Type', 'Document Number', 'Submitted At', 'Actions'].map(h => (
+              <th key={h} className="px-4 py-2 text-left font-semibold">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {kycList.map(item => (
+            <tr key={item.id} className="border-b hover:bg-gray-50">
+              <td className="px-4 py-2">
+                <p className="font-semibold">{item.first_name} {item.last_name}</p>
+                <p className="text-xs text-gray-500">@{item.username}</p>
+              </td>
+              <td className="px-4 py-2 capitalize">{item.role}</td>
+              <td className="px-4 py-2 capitalize">{item.kyc_document_type?.replace('_', ' ')}</td>
+              <td className="px-4 py-2 font-mono">{item.kyc_document_number}</td>
+              <td className="px-4 py-2 text-xs text-gray-500">
+                {item.kyc_submitted_at ? new Date(item.kyc_submitted_at).toLocaleDateString('en-IN') : '—'}
+              </td>
+              <td className="px-4 py-2">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleApprove(item.id, item.username)}
+                    className="rounded bg-emerald-600 px-3 py-1 text-xs font-bold text-white hover:bg-emerald-700"
+                  >
+                    Approve ✓
+                  </button>
+                  <button
+                    onClick={() => handleReject(item.id, item.username)}
+                    className="rounded bg-red-600 px-3 py-1 text-xs font-bold text-white hover:bg-red-700"
+                  >
+                    Reject ✗
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 export default function AdminPanel() {
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('users')
@@ -110,7 +221,8 @@ export default function AdminPanel() {
     { id: 'proposals', label: 'Proposals', icon: '📝' },
     { id: 'payments', label: 'Payments', icon: '💰' },
     { id: 'jobs', label: 'Jobs', icon: '💼' },
-    { id: 'consultations', label: 'Consultations', icon: '📞' }
+    { id: 'consultations', label: 'Consultations', icon: '📞' },
+    { id: 'kyc', label: 'KYC Requests', icon: '🪪' },
   ]
 
   const renderTable = () => {
@@ -209,7 +321,7 @@ export default function AdminPanel() {
         </div>
 
         {/* Search Bar */}
-        {activeTab === 'users' && (
+        {activeTab === 'users' && activeTab !== 'kyc' && (
           <div className="mb-4">
             <input
               type="text"
@@ -223,8 +335,8 @@ export default function AdminPanel() {
 
         {/* Data Table */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4 capitalize">{activeTab}</h2>
-          {renderTable()}
+          <h2 className="text-xl font-bold text-gray-900 mb-4 capitalize">{activeTab === 'kyc' ? 'Pending KYC Requests' : activeTab}</h2>
+          {activeTab === 'kyc' ? <KYCPanel /> : renderTable()}
         </div>
       </div>
     </div>

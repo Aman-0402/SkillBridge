@@ -34,9 +34,12 @@ function ProjectCardSkeleton() {
 
 export default function Projects() {
   const { user } = useAuth()
+  const isClient = user?.role === 'client'
+  const isAdmin = user?.role === 'admin'
+
+  const [filter, setFilter] = useState(isClient ? 'my_projects' : 'all')
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
 
   useEffect(() => {
@@ -48,8 +51,6 @@ export default function Projects() {
       .finally(() => setLoading(false))
   }, [filter])
 
-  const isClient = user?.role === 'client' || user?.role === 'admin'
-
   const filtered = projects.filter(p =>
     !search || p.title?.toLowerCase().includes(search.toLowerCase()) ||
     p.category?.toLowerCase().includes(search.toLowerCase())
@@ -60,10 +61,12 @@ export default function Projects() {
       {/* Page header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">Browse</p>
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">
+            {isClient ? 'My Work' : 'Browse'}
+          </p>
           <h1 className="mt-1 text-2xl font-black text-slate-950">Projects</h1>
         </div>
-        {isClient && (
+        {(isClient || isAdmin) && (
           <Link
             to="/create-project"
             className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-black text-white shadow-[0_8px_24px_rgba(37,99,235,0.25)] transition hover:-translate-y-0.5 hover:bg-blue-500"
@@ -76,7 +79,7 @@ export default function Projects() {
       {/* Filters + search */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex gap-2">
-          {['all', ...(isClient ? ['my_projects'] : [])].map((f) => (
+          {(isClient ? ['my_projects'] : ['all', ...(isAdmin ? ['my_projects'] : [])]).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -113,10 +116,10 @@ export default function Projects() {
           <div>
             <p className="font-black text-slate-700">No projects found</p>
             <p className="mt-1 text-sm text-slate-400">
-              {search ? 'Try a different search term.' : isClient ? 'Post your first project to get started.' : 'Check back soon for new opportunities.'}
+              {search ? 'Try a different search term.' : (isClient || isAdmin) ? 'Post your first project to get started.' : 'Check back soon for new opportunities.'}
             </p>
           </div>
-          {isClient && !search && (
+          {(isClient || isAdmin) && !search && (
             <Link to="/create-project" className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-black text-white hover:bg-blue-500">
               Post a Project
             </Link>

@@ -5,6 +5,7 @@ from .views import (
     RegisterView, ProfileView, ChangePasswordView,
     SkillViewSet, ExperienceViewSet, PublicProfileView,
     featured_consultants, toggle_featured,
+    kyc_submit, kyc_pending_list, kyc_approve, kyc_reject,
 )
 
 router = DefaultRouter()
@@ -20,5 +21,9 @@ urlpatterns = [
     path('profile/<str:username>/', PublicProfileView.as_view(), name='public_profile'),
     path('featured-consultants/', featured_consultants, name='featured_consultants'),
     path('toggle-featured/<int:user_id>/', toggle_featured, name='toggle_featured'),
+    path('kyc/submit/', kyc_submit, name='kyc_submit'),
+    path('kyc/pending/', kyc_pending_list, name='kyc_pending_list'),
+    path('kyc/approve/<int:user_id>/', kyc_approve, name='kyc_approve'),
+    path('kyc/reject/<int:user_id>/', kyc_reject, name='kyc_reject'),
     path('', include(router.urls)),
 ]

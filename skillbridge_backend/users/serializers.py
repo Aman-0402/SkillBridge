@@ -16,7 +16,7 @@ class ExperienceSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'bio', 'profile_image', 'hourly_rate', 'is_verified', 'is_featured', 'is_staff', 'identity', 'working_industry', 'state']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'bio', 'profile_image', 'hourly_rate', 'is_verified', 'is_featured', 'is_staff', 'identity', 'working_industry', 'state', 'kyc_status']
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -76,5 +76,19 @@ class ProfileSerializer(serializers.ModelSerializer):
             'interest1', 'interest2', 'interest3',
             'working_industry', 'experience_description',
             'location', 'portfolio_url',
+            'kyc_status', 'kyc_document_type', 'kyc_document_number',
+            'kyc_submitted_at', 'kyc_rejection_reason',
         ]
-        read_only_fields = ['id', 'username', 'email', 'role', 'is_verified', 'is_staff']
+        read_only_fields = [
+            'id', 'username', 'email', 'role', 'is_verified', 'is_staff',
+            'kyc_status', 'kyc_submitted_at', 'kyc_rejection_reason',
+        ]
+
+
+class KYCSubmitSerializer(serializers.Serializer):
+    kyc_document_type = serializers.ChoiceField(choices=[
+        ('aadhaar', 'Aadhaar Card'), ('pan', 'PAN Card'),
+        ('passport', 'Passport'), ('driving_license', 'Driving License'),
+        ('voter_id', 'Voter ID'),
+    ])
+    kyc_document_number = serializers.CharField(max_length=50)

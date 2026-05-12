@@ -1,201 +1,384 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import {
+  FaCalendarCheck, FaCalendarPlus, FaTrash, FaCircleCheck,
+  FaClock, FaUser, FaIndianRupeeSign,
+} from 'react-icons/fa6'
+import Swal from 'sweetalert2'
 import api from '../services/api'
+import { useAuth } from '../hooks/useAuth'
 
-export default function ManageAvailability() {
+/* ─── Status badge ─────────────────────────────────────── */
+const STATUS_STYLES = {
+  pending:   'bg-amber-50 text-amber-700',
+  confirmed: 'bg-blue-50 text-blue-700',
+  completed: 'bg-emerald-50 text-emerald-700',
+  cancelled: 'bg-rose-50 text-rose-600',
+}
+function StatusBadge({ status }) {
+  return (
+    <span className={`rounded-lg px-2.5 py-1 text-xs font-black capitalize ${STATUS_STYLES[status] || 'bg-slate-100 text-slate-600'}`}>
+      {status}
+    </span>
+  )
+}
+
+/* ─── Skeleton ─────────────────────────────────────────── */
+function SessionSkeleton() {
+  return (
+    <div className="animate-pulse rounded-xl border border-slate-100 p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 space-y-2">
+          <div className="h-4 w-48 rounded bg-slate-200" />
+          <div className="h-3 w-32 rounded bg-slate-100" />
+          <div className="h-3 w-40 rounded bg-slate-100" />
+        </div>
+        <div className="h-6 w-20 rounded-lg bg-slate-200" />
+      </div>
+    </div>
+  )
+}
+
+/* ─── CLIENT VIEW — booked sessions ───────────────────── */
+function ClientAppointments() {
+  const [sessions, setSessions] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.get('/consultations/sessions/my_sessions/')
+      .then(res => setSessions(Array.isArray(res.data) ? res.data : res.data.results || []))
+      .catch(() => setSessions([]))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const handleCancel = async (id) => {
+    const result = await Swal.fire({
+      title: 'Cancel appointment?',
+      text: 'This will cancel your booked session.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, cancel it',
+      confirmButtonColor: '#dc2626',
+      cancelButtonText: 'Keep it',
+    })
+    if (!result.isConfirmed) return
+    try {
+      await api.post(`/consultations/sessions/${id}/cancel_session/`)
+      setSessions(prev => prev.map(s => s.id === id ? { ...s, status: 'cancelled' } : s))
+      Swal.fire({ icon: 'success', title: 'Cancelled', timer: 1500, showConfirmButton: false })
+    } catch {
+      Swal.fire({ icon: 'error', title: 'Failed to cancel', text: 'Please try again.' })
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">Your bookings</p>
+        <h1 className="mt-1 text-2xl font-black text-slate-950">Appointments</h1>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-4 flex items-center gap-2">
+          <FaCalendarCheck className="text-blue-600" />
+          <h2 className="font-black text-slate-950">Booked Sessions</h2>
+          <span className="ml-auto rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-black text-blue-700">
+            {sessions.length}
+          </span>
+        </div>
+
+        {loading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => <SessionSkeleton key={i} />)}
+          </div>
+        ) : sessions.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 py-12 text-center">
+            <FaCalendarCheck className="text-4xl text-slate-200" />
+            <p className="font-black text-slate-500">No appointments yet</p>
+            <p className="text-sm text-slate-400">
+              Browse consultants and book your first session.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {sessions.map(session => (
+              <div key={session.id} className="rounded-xl border border-slate-100 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="space-y-1">
+                    <p className="font-black text-slate-950">{session.title || session.session_type}</p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+                      <span className="flex items-center gap-1">
+                        <FaUser className="text-blue-400" />
+                        with {session.consultant?.username}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <FaClock className="text-blue-400" />
+                        {session.scheduled_date} · {session.start_time} – {session.end_time}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <FaIndianRupeeSign className="text-emerald-500" />
+                        {Number(session.session_cost).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    {session.description && (
+                      <p className="text-xs text-slate-400 line-clamp-2">{session.description}</p>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <StatusBadge status={session.status} />
+                    {session.status === 'pending' && (
+                      <button
+                        onClick={() => handleCancel(session.id)}
+                        className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-black text-rose-600 hover:bg-rose-50"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ─── CONSULTANT / FREELANCER VIEW ─────────────────────── */
+function ConsultantAvailability() {
   const [availability, setAvailability] = useState([])
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
-  const [newSlot, setNewSlot] = useState({
-    day_of_week: 'monday',
-    start_time: '09:00',
-    end_time: '10:00',
-  })
+  const [newSlot, setNewSlot] = useState({ day_of_week: 'monday', start_time: '09:00', end_time: '10:00' })
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    fetchData()
+    Promise.all([
+      api.get('/consultations/availability/'),
+      api.get('/consultations/sessions/my_sessions/'),
+    ]).then(([avail, sess]) => {
+      setAvailability(avail.data || [])
+      setSessions(Array.isArray(sess.data) ? sess.data : sess.data.results || [])
+    }).catch(() => {}).finally(() => setLoading(false))
   }, [])
-
-  const fetchData = async () => {
-    try {
-      const [availRes, sessRes] = await Promise.all([
-        api.get('/consultations/availability/'),
-        api.get('/consultations/sessions/my_sessions/')
-      ])
-      setAvailability(availRes.data || [])
-      setSessions(Array.isArray(sessRes.data) ? sessRes.data : sessRes.data.results || [])
-    } catch (error) {
-      console.error('Failed to fetch data:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleAddSlot = async (e) => {
     e.preventDefault()
+    setSaving(true)
     try {
-      const response = await api.post('/consultations/availability/', newSlot)
-      setAvailability([...availability, response.data])
+      const res = await api.post('/consultations/availability/', newSlot)
+      setAvailability(prev => [...prev, res.data])
       setNewSlot({ day_of_week: 'monday', start_time: '09:00', end_time: '10:00' })
-    } catch (error) {
-      console.error('Failed to add slot:', error)
-      alert('Failed to add availability slot')
+      Swal.fire({ icon: 'success', title: 'Slot added!', timer: 1200, showConfirmButton: false })
+    } catch {
+      Swal.fire({ icon: 'error', title: 'Failed to add slot', text: 'Please try again.' })
+    } finally {
+      setSaving(false)
     }
   }
 
-  const deleteSlot = async (slotId) => {
+  const handleDeleteSlot = async (id) => {
+    const result = await Swal.fire({
+      title: 'Delete this slot?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Delete',
+      confirmButtonColor: '#dc2626',
+    })
+    if (!result.isConfirmed) return
     try {
-      await api.delete(`/consultations/availability/${slotId}/`)
-      setAvailability(availability.filter(a => a.id !== slotId))
-    } catch (error) {
-      console.error('Failed to delete slot:', error)
-      alert('Failed to delete availability slot')
+      await api.delete(`/consultations/availability/${id}/`)
+      setAvailability(prev => prev.filter(a => a.id !== id))
+      Swal.fire({ icon: 'success', title: 'Deleted', timer: 1000, showConfirmButton: false })
+    } catch {
+      Swal.fire({ icon: 'error', title: 'Failed to delete', text: 'Please try again.' })
     }
   }
 
-  const confirmSession = async (sessionId) => {
+  const handleConfirm = async (id) => {
     try {
-      await api.post(`/consultations/sessions/${sessionId}/confirm_session/`)
-      fetchData()
-      alert('Session confirmed!')
-    } catch (error) {
-      console.error('Failed to confirm session:', error)
-      alert('Failed to confirm session')
+      await api.post(`/consultations/sessions/${id}/confirm_session/`)
+      setSessions(prev => prev.map(s => s.id === id ? { ...s, status: 'confirmed' } : s))
+      Swal.fire({ icon: 'success', title: 'Session confirmed!', timer: 1200, showConfirmButton: false })
+    } catch {
+      Swal.fire({ icon: 'error', title: 'Failed to confirm', text: 'Please try again.' })
     }
   }
 
-  if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>
+  const handleComplete = async (id) => {
+    const result = await Swal.fire({
+      title: 'Mark as completed?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, complete it',
+      confirmButtonColor: '#059669',
+    })
+    if (!result.isConfirmed) return
+    try {
+      await api.post(`/consultations/sessions/${id}/complete_session/`)
+      setSessions(prev => prev.map(s => s.id === id ? { ...s, status: 'completed' } : s))
+      Swal.fire({ icon: 'success', title: 'Session completed!', timer: 1200, showConfirmButton: false })
+    } catch {
+      Swal.fire({ icon: 'error', title: 'Failed to complete', text: 'Please try again.' })
+    }
+  }
+
+  const DAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday']
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-indigo-600">ConsultME</h1>
-          <Link to="/dashboard" className="text-gray-600 hover:text-gray-900">Dashboard</Link>
-        </div>
-      </nav>
+    <div className="space-y-6">
+      <div>
+        <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-600">Schedule</p>
+        <h1 className="mt-1 text-2xl font-black text-slate-950">Manage Availability</h1>
+      </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-8">Manage Availability</h2>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Add Availability Slot */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Add Availability</h3>
-            <form onSubmit={handleAddSlot} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Day</label>
-                <select
-                  value={newSlot.day_of_week}
-                  onChange={(e) => setNewSlot({...newSlot, day_of_week: e.target.value})}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                >
-                  <option value="monday">Monday</option>
-                  <option value="tuesday">Tuesday</option>
-                  <option value="wednesday">Wednesday</option>
-                  <option value="thursday">Thursday</option>
-                  <option value="friday">Friday</option>
-                  <option value="saturday">Saturday</option>
-                  <option value="sunday">Sunday</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
-                  <input
-                    type="time"
-                    value={newSlot.start_time}
-                    onChange={(e) => setNewSlot({...newSlot, start_time: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
-                  <input
-                    type="time"
-                    value={newSlot.end_time}
-                    onChange={(e) => setNewSlot({...newSlot, end_time: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg"
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Add slot */}
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-4 flex items-center gap-2">
+            <FaCalendarPlus className="text-emerald-600" />
+            <h2 className="font-black text-slate-950">Add Time Slot</h2>
+          </div>
+          <form onSubmit={handleAddSlot} className="space-y-4">
+            <label className="grid gap-1.5 text-xs font-black uppercase tracking-wider text-slate-500">
+              Day
+              <select
+                value={newSlot.day_of_week}
+                onChange={e => setNewSlot(p => ({ ...p, day_of_week: e.target.value }))}
+                className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
               >
-                Add Time Slot
-              </button>
-            </form>
-          </div>
-
-          {/* Current Availability */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Current Availability</h3>
-            {availability.length === 0 ? (
-              <p className="text-gray-600">No availability slots added yet</p>
-            ) : (
-              <div className="space-y-2">
-                {availability.map(slot => (
-                  <div key={slot.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="font-semibold text-gray-900 capitalize">{slot.day_of_week}</p>
-                      <p className="text-sm text-gray-600">{slot.start_time} - {slot.end_time}</p>
-                    </div>
-                    <button
-                      onClick={() => deleteSlot(slot.id)}
-                      className="text-red-600 hover:text-red-700 text-sm font-semibold"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                {DAYS.map(d => <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>)}
+              </select>
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="grid gap-1.5 text-xs font-black uppercase tracking-wider text-slate-500">
+                Start
+                <input type="time" value={newSlot.start_time}
+                  onChange={e => setNewSlot(p => ({ ...p, start_time: e.target.value }))}
+                  className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+                />
+              </label>
+              <label className="grid gap-1.5 text-xs font-black uppercase tracking-wider text-slate-500">
+                End
+                <input type="time" value={newSlot.end_time}
+                  onChange={e => setNewSlot(p => ({ ...p, end_time: e.target.value }))}
+                  className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+                />
+              </label>
+            </div>
+            <button type="submit" disabled={saving}
+              className="w-full rounded-xl bg-emerald-600 py-3 text-sm font-black text-white transition hover:bg-emerald-500 disabled:opacity-60">
+              {saving ? 'Adding...' : 'Add Slot'}
+            </button>
+          </form>
         </div>
 
-        {/* Sessions */}
-        <div className="bg-white rounded-lg shadow p-6 mt-8">
-          <h3 className="text-2xl font-bold text-gray-900 mb-4">My Sessions</h3>
-          {sessions.length === 0 ? (
-            <p className="text-gray-600">No sessions booked yet</p>
+        {/* Current slots */}
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-4 flex items-center gap-2">
+            <FaClock className="text-emerald-600" />
+            <h2 className="font-black text-slate-950">Current Slots</h2>
+            <span className="ml-auto rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-black text-emerald-700">
+              {availability.length}
+            </span>
+          </div>
+          {loading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="animate-pulse flex justify-between rounded-xl bg-slate-50 p-3">
+                  <div className="h-4 w-24 rounded bg-slate-200" />
+                  <div className="h-4 w-32 rounded bg-slate-100" />
+                </div>
+              ))}
+            </div>
+          ) : availability.length === 0 ? (
+            <p className="py-6 text-center text-sm text-slate-400">No slots added yet.</p>
           ) : (
-            <div className="space-y-4">
-              {sessions.map(session => (
-                <div key={session.id} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <p className="font-bold text-gray-900">{session.title}</p>
-                      <p className="text-gray-600">{session.client.username} • {session.session_type}</p>
-                    </div>
-                    <span className={`px-3 py-1 rounded text-sm font-semibold ${
-                      session.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                      session.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {session.status}
-                    </span>
+            <div className="space-y-2">
+              {availability.map(slot => (
+                <div key={slot.id} className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-black capitalize text-slate-950">{slot.day_of_week}</p>
+                    <p className="text-xs text-slate-500">{slot.start_time} – {slot.end_time}</p>
                   </div>
-                  <p className="text-gray-700 text-sm mb-2">{session.description}</p>
-                  <p className="text-sm text-gray-600 mb-4">
-                    {session.scheduled_date} • {session.start_time} - {session.end_time}
-                  </p>
-                  {session.status === 'pending' && (
-                    <button
-                      onClick={() => confirmSession(session.id)}
-                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-semibold"
-                    >
-                      Confirm
-                    </button>
-                  )}
+                  <button onClick={() => handleDeleteSlot(slot.id)}
+                    className="rounded-lg p-2 text-rose-400 transition hover:bg-rose-50 hover:text-rose-600">
+                    <FaTrash className="text-xs" />
+                  </button>
                 </div>
               ))}
             </div>
           )}
         </div>
       </div>
+
+      {/* Sessions */}
+      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-4 flex items-center gap-2">
+          <FaCalendarCheck className="text-emerald-600" />
+          <h2 className="font-black text-slate-950">Incoming Sessions</h2>
+          <span className="ml-auto rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-black text-emerald-700">
+            {sessions.length}
+          </span>
+        </div>
+        {loading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => <SessionSkeleton key={i} />)}
+          </div>
+        ) : sessions.length === 0 ? (
+          <p className="py-8 text-center text-sm text-slate-400">No sessions booked yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {sessions.map(session => (
+              <div key={session.id} className="rounded-xl border border-slate-100 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="space-y-1">
+                    <p className="font-black text-slate-950">{session.title || session.session_type}</p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+                      <span className="flex items-center gap-1">
+                        <FaUser className="text-emerald-400" />
+                        {session.client?.username}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <FaClock className="text-emerald-400" />
+                        {session.scheduled_date} · {session.start_time} – {session.end_time}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <FaIndianRupeeSign className="text-emerald-400" />
+                        {Number(session.session_cost).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <StatusBadge status={session.status} />
+                    {session.status === 'pending' && (
+                      <button onClick={() => handleConfirm(session.id)}
+                        className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-black text-white hover:bg-emerald-500">
+                        <FaCircleCheck /> Confirm
+                      </button>
+                    )}
+                    {session.status === 'confirmed' && (
+                      <button onClick={() => handleComplete(session.id)}
+                        className="rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-black text-emerald-700 hover:bg-emerald-50">
+                        Complete
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
+}
+
+/* ─── Main export ──────────────────────────────────────── */
+export default function ManageAvailability() {
+  const { user } = useAuth()
+  const role = user?.role
+
+  if (role === 'client') return <ClientAppointments />
+  return <ConsultantAvailability />
 }

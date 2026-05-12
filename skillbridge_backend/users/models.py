@@ -35,6 +35,26 @@ class User(AbstractUser):
     working_industry = models.CharField(max_length=100, blank=True, null=True)
     experience_description = models.TextField(blank=True, null=True)
 
+    # KYC verification
+    KYC_STATUS_CHOICES = (
+        ('unverified', 'Unverified'),
+        ('pending', 'Pending'),
+        ('verified', 'Verified'),
+        ('rejected', 'Rejected'),
+    )
+    KYC_DOC_CHOICES = (
+        ('aadhaar', 'Aadhaar Card'),
+        ('pan', 'PAN Card'),
+        ('passport', 'Passport'),
+        ('driving_license', 'Driving License'),
+        ('voter_id', 'Voter ID'),
+    )
+    kyc_status = models.CharField(max_length=20, choices=KYC_STATUS_CHOICES, default='unverified')
+    kyc_document_type = models.CharField(max_length=20, choices=KYC_DOC_CHOICES, blank=True, null=True)
+    kyc_document_number = models.CharField(max_length=50, blank=True, null=True)
+    kyc_submitted_at = models.DateTimeField(blank=True, null=True)
+    kyc_rejection_reason = models.TextField(blank=True, null=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

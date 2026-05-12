@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { FaMagnifyingGlass, FaUserTie, FaIndianRupeeSign, FaStar } from 'react-icons/fa6'
+import { FaMagnifyingGlass, FaUserTie, FaIndianRupeeSign, FaStar, FaCircleCheck } from 'react-icons/fa6'
 import api from '../services/api'
 
 function ConsultantCardSkeleton() {
@@ -124,7 +124,12 @@ export default function Consultants() {
                       {initials}
                     </div>
                     <div className="min-w-0">
-                      <p className="truncate font-black text-slate-950">{name}</p>
+                      <p className="flex items-center gap-1.5 truncate font-black text-slate-950">
+                        {name}
+                        {consultant.kyc_status === 'verified' && (
+                          <FaCircleCheck className="shrink-0 text-sm text-emerald-500" title="Verified" />
+                        )}
+                      </p>
                       <p className="text-xs text-slate-500">@{consultant.username}</p>
                     </div>
                     {consultant.is_featured && (
