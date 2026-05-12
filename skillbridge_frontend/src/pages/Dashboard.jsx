@@ -14,7 +14,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-indigo-600">SkillBridge</h1>
+          <h1 className="text-2xl font-bold text-indigo-600">ConsultME</h1>
           <div className="space-x-4">
             <a href="/profile" className="text-gray-600 hover:text-gray-900">Profile</a>
             <a href="/chat" className="text-gray-600 hover:text-gray-900">Messages</a>

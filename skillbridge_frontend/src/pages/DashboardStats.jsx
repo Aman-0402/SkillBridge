@@ -228,7 +228,7 @@ export default function DashboardStats() {
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-4">
-          <h1 className="text-2xl font-bold text-indigo-600">SkillBridge Analytics</h1>
+          <h1 className="text-2xl font-bold text-indigo-600">ConsultME Analytics</h1>
         </div>
       </nav>
 

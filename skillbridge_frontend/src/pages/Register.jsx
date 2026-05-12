@@ -49,7 +49,7 @@ export default function Register() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Join SkillBridge</h2>
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">Join ConsultME</h2>
         <p className="text-gray-600 mb-6">Create your account to get started</p>
 
         {errors.general && (

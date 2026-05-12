@@ -37,7 +37,7 @@ export default function Projects() {
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-indigo-600">SkillBridge</h1>
+          <h1 className="text-2xl font-bold text-indigo-600">ConsultME</h1>
           <div className="space-x-4">
             <Link to="/dashboard" className="text-gray-600 hover:text-gray-900">Dashboard</Link>
             <Link to="/profile" className="text-gray-600 hover:text-gray-900">Profile</Link>

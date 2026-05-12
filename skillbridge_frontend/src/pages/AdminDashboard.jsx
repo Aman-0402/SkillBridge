@@ -89,7 +89,7 @@ export default function AdminDashboard() {
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
             <Link to="/dashboard" className="text-gray-600 hover:text-gray-900 text-xl">← Back</Link>
-            <h1 className="text-2xl font-bold text-indigo-600">SkillBridge Admin</h1>
+            <h1 className="text-2xl font-bold text-indigo-600">ConsultME Admin</h1>
           </div>
           <Link to="/admin/panel" className="text-indigo-600 hover:text-indigo-700 font-semibold">Control Panel</Link>
         </div>

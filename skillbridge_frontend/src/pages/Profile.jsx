@@ -131,7 +131,7 @@ export default function Profile() {
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
             <a href="/dashboard" className="text-gray-600 hover:text-gray-900 text-xl">← Back</a>
-            <h1 className="text-2xl font-bold text-indigo-600">SkillBridge</h1>
+            <h1 className="text-2xl font-bold text-indigo-600">ConsultME</h1>
           </div>
         </div>
       </nav>

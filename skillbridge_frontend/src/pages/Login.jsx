@@ -41,7 +41,7 @@ export default function Login() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
         <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
-        <p className="text-gray-600 mb-6">Sign in to your SkillBridge account</p>
+        <p className="text-gray-600 mb-6">Sign in to your ConsultME account</p>
 
         {errors.general && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
