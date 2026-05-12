@@ -126,7 +126,7 @@ export default function AdminDashboard() {
           <StatCard title="Total Users" value={platformStats.total_users} icon="👥" />
           <StatCard title="Total Projects" value={platformStats.total_projects} icon="📊" />
           <StatCard title="Total Jobs" value={platformStats.total_jobs} icon="💼" />
-          <StatCard title="Total Payments" value={`$${platformStats.total_payments}`} icon="💰" />
+          <StatCard title="Total Payments" value={`₹${Number(platformStats.total_payments).toLocaleString('en-IN')}`} icon="💰" />
         </div>
 
         {/* KPI Cards */}
@@ -141,7 +141,7 @@ export default function AdminDashboard() {
               </div>
               <div className="p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-lg border-l-4 border-green-500">
                 <p className="text-gray-600 text-sm font-semibold mb-1">Avg Project Value</p>
-                <p className="text-4xl font-bold text-green-900">${kpis.avg_project_value.toFixed(0)}</p>
+                <p className="text-4xl font-bold text-green-900">₹{Number(kpis.avg_project_value).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
                 <p className="text-xs text-green-600 mt-2">Average budget</p>
               </div>
               <div className="p-6 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border-l-4 border-purple-500">
@@ -151,7 +151,7 @@ export default function AdminDashboard() {
               </div>
               <div className="p-6 bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg border-l-4 border-orange-500">
                 <p className="text-gray-600 text-sm font-semibold mb-1">Total Revenue</p>
-                <p className="text-4xl font-bold text-orange-900">${kpis.revenue_split.total.toFixed(0)}</p>
+                <p className="text-4xl font-bold text-orange-900">₹{Number(kpis.revenue_split.total).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
                 <p className="text-xs text-orange-600 mt-2">All sources</p>
               </div>
             </div>
@@ -160,11 +160,11 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <p className="text-gray-700 text-sm font-semibold mb-1">Project Revenue</p>
-                <p className="text-3xl font-bold text-blue-900">${kpis.revenue_split.projects.toFixed(2)}</p>
+                <p className="text-3xl font-bold text-blue-900">₹{Number(kpis.revenue_split.projects).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p>
               </div>
               <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
                 <p className="text-gray-700 text-sm font-semibold mb-1">Consultation Revenue</p>
-                <p className="text-3xl font-bold text-emerald-900">${kpis.revenue_split.consultations.toFixed(2)}</p>
+                <p className="text-3xl font-bold text-emerald-900">₹{Number(kpis.revenue_split.consultations).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p>
               </div>
             </div>
 
@@ -181,7 +181,7 @@ export default function AdminDashboard() {
                           <p className="font-semibold text-gray-900">{idx + 1}. {freelancer.username}</p>
                           <p className="text-xs text-gray-600">{freelancer.projects_completed} projects completed</p>
                         </div>
-                        <p className="text-lg font-bold text-purple-900">${freelancer.earned.toFixed(0)}</p>
+                        <p className="text-lg font-bold text-purple-900">₹{Number(freelancer.earned).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
                       </div>
                     ))
                   ) : (
@@ -201,7 +201,7 @@ export default function AdminDashboard() {
                           <p className="font-semibold text-gray-900">{idx + 1}. {consultant.username}</p>
                           <p className="text-xs text-gray-600">{consultant.sessions_completed} sessions completed</p>
                         </div>
-                        <p className="text-lg font-bold text-orange-900">${consultant.earned.toFixed(0)}</p>
+                        <p className="text-lg font-bold text-orange-900">₹{Number(consultant.earned).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
                       </div>
                     ))
                   ) : (
@@ -338,7 +338,7 @@ export default function AdminDashboard() {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" angle={-45} textAnchor="end" height={80} />
                 <YAxis />
-                <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
+                <Tooltip formatter={(value) => `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
                 <Bar dataKey="amount" fill="#3b82f6" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -378,7 +378,7 @@ export default function AdminDashboard() {
             </div>
             <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
               <p className="text-gray-600 text-sm">Avg Project Budget</p>
-              <p className="text-3xl font-bold text-indigo-900">${platformStats.avg_project_budget.toFixed(0)}</p>
+              <p className="text-3xl font-bold text-indigo-900">₹{Number(platformStats.avg_project_budget).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
             </div>
           </div>
         </div>
@@ -389,7 +389,7 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
               <p className="text-gray-600 text-sm">Total Payments (Completed)</p>
-              <p className="text-3xl font-bold text-emerald-900">${platformStats.total_payments}</p>
+              <p className="text-3xl font-bold text-emerald-900">₹{Number(platformStats.total_payments).toLocaleString('en-IN')}</p>
             </div>
             <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
               <p className="text-gray-600 text-sm">Total Transactions</p>
@@ -398,7 +398,7 @@ export default function AdminDashboard() {
             <div className="p-4 bg-cyan-50 rounded-lg border border-cyan-200">
               <p className="text-gray-600 text-sm">Avg Transaction</p>
               <p className="text-3xl font-bold text-cyan-900">
-                ${platformStats.total_transactions > 0 ? (platformStats.total_payments / platformStats.total_transactions).toFixed(2) : 0}
+                ₹{platformStats.total_transactions > 0 ? Number(platformStats.total_payments / platformStats.total_transactions).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : 0}
               </p>
             </div>
           </div>
@@ -428,12 +428,12 @@ export default function AdminDashboard() {
                 <div key={idx} className="flex items-start gap-4 pb-4 border-b last:border-b-0">
                   <div className="flex-shrink-0">
                     <div className="flex items-center justify-center h-10 w-10 rounded-full bg-green-100">
-                      <span className="text-green-600 font-bold">$</span>
+                      <span className="text-green-600 font-bold">₹</span>
                     </div>
                   </div>
                   <div className="flex-grow min-w-0">
                     <p className="text-sm font-semibold text-gray-900">
-                      Payment of ${transaction.amount.toFixed(2)}
+                      Payment of ₹{Number(transaction.amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                     </p>
                     <p className="text-sm text-gray-600 mt-1">
                       From <span className="font-semibold">{transaction.client}</span> to <span className="font-semibold">{transaction.freelancer}</span>
