@@ -257,6 +257,36 @@ export default function Profile() {
   const [showNew, setShowNew] = useState(false)
   const [roleChoice, setRoleChoice] = useState(null)
   const [showPremiumModal, setShowPremiumModal] = useState(false)
+  const [roleChanging, setRoleChanging] = useState('')
+
+  const handleRoleChange = async (newRole) => {
+    if (newRole === roleChoice) return
+    if (newRole === 'both' && !profile.is_premium) { setShowPremiumModal(true); return }
+
+    const ROLE_LABELS = { freelancer: 'Freelancer', consultant: 'Consultant', both: 'Both (Freelancer + Consultant)' }
+    const result = await Swal.fire({
+      title: `Switch to ${ROLE_LABELS[newRole]}?`,
+      html: `<p style="color:#64748b;font-size:14px">Your dashboard, sidebar, and available features will update to match the <strong>${ROLE_LABELS[newRole]}</strong> role.<br><br>Any unsaved form changes will be lost. The page will reload.</p>`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: newRole === 'consultant' ? '#2563eb' : newRole === 'both' ? '#7c3aed' : '#059669',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: `Yes, switch to ${ROLE_LABELS[newRole]}`,
+      cancelButtonText: 'Cancel',
+    })
+    if (!result.isConfirmed) return
+
+    setRoleChanging(newRole)
+    try {
+      const fd = new FormData()
+      fd.append('role', newRole)
+      await api.patch('/auth/profile/', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      window.location.reload()
+    } catch (e) {
+      setRoleChanging('')
+      Swal.fire({ icon: 'error', title: 'Failed', text: e.response?.data?.role?.[0] || e.response?.data?.detail || 'Could not change role.' })
+    }
+  }
 
   useEffect(() => { fetchProfile() }, [])
 
@@ -518,11 +548,9 @@ export default function Profile() {
                         <button
                           key={opt.value}
                           type="button"
-                          onClick={() => {
-                            if (opt.premium && !profile.is_premium) { setShowPremiumModal(true); return }
-                            setRoleChoice(opt.value)
-                          }}
-                          className={`rounded-xl border px-3 py-2.5 text-xs font-black transition ${
+                          disabled={!!roleChanging}
+                          onClick={() => handleRoleChange(opt.value)}
+                          className={`rounded-xl border px-3 py-2.5 text-xs font-black transition disabled:opacity-50 disabled:cursor-not-allowed ${
                             roleChoice === opt.value
                               ? opt.value === 'both' ? 'border-purple-400 bg-purple-100 text-purple-800'
                                 : opt.value === 'consultant' ? 'border-blue-400 bg-blue-100 text-blue-800'
@@ -532,6 +560,9 @@ export default function Profile() {
                         >
                           {opt.label}
                           {opt.premium && !profile.is_premium && <span className="ml-1 text-[9px] text-purple-400">Premium</span>}
+                          {roleChanging === opt.value && (
+                            <span className="ml-1.5 inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin align-middle" />
+                          )}
                         </button>
                       ))}
                     </div>
