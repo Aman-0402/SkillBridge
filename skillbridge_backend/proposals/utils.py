@@ -1,7 +1,5 @@
-import hmac
-import hashlib
+import uuid
 from decimal import Decimal, ROUND_HALF_UP
-from django.conf import settings
 
 PLATFORM_FEE_RATE = Decimal('0.06')
 GST_RATE = Decimal('0.18')
@@ -21,31 +19,30 @@ def calculate_fees(base_amount):
         'gst_amount': gst,
         'convenience_fee': convenience_fee,
         'total_amount': total,
-        'payout_amount': base,  # consultant receives base; platform keeps fees; GST is tax
+        'payout_amount': base,
     }
 
 
-def get_razorpay_client():
-    import razorpay
-    return razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+def generate_mock_txn_id():
+    """Generate a deterministic-looking fake transaction ID for the prototype."""
+    return f"MOCK-{uuid.uuid4().hex[:8].upper()}-{uuid.uuid4().hex[:8].upper()}"
 
 
-def verify_razorpay_signature(order_id, payment_id, signature):
-    key = settings.RAZORPAY_KEY_SECRET.encode('utf-8')
-    msg = f"{order_id}|{payment_id}".encode('utf-8')
-    expected = hmac.new(key, msg, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(expected, signature)
+# ---------------------------------------------------------------------------
+# Stub hooks — swap these implementations for real gateway calls later.
+# Each function has the same signature the real integration will need.
+# ---------------------------------------------------------------------------
+
+def get_payment_client():
+    """Return a payment gateway client. Replace body with real SDK init."""
+    return None  # stub
+
+
+def verify_payment_signature(order_id, payment_id, signature):
+    """Verify gateway HMAC. Replace with real HMAC check."""
+    return True  # always valid in mock mode
 
 
 def verify_webhook_signature(payload_body, signature):
-    secret = getattr(settings, 'RAZORPAY_WEBHOOK_SECRET', '')
-    if not secret:
-        return False
-    key = secret.encode('utf-8')
-    expected = hmac.new(key, payload_body, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(expected, signature)
-
-
-def to_paise(amount_decimal):
-    """Convert Decimal rupees to integer paise for Razorpay API."""
-    return int((Decimal(str(amount_decimal)) * 100).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
+    """Verify webhook HMAC. Replace with real HMAC check."""
+    return True  # always valid in mock mode

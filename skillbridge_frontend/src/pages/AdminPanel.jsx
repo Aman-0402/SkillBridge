@@ -199,6 +199,46 @@ export default function AdminPanel() {
     }
   }
 
+  const handleDisputePayment = async (paymentId) => {
+    const { value: reason, isConfirmed } = await Swal.fire({
+      title: 'Mark as Disputed?',
+      input: 'textarea',
+      inputLabel: 'Reason (optional)',
+      inputPlaceholder: 'Describe the dispute…',
+      showCancelButton: true,
+      confirmButtonColor: '#f97316',
+      confirmButtonText: 'Mark Disputed',
+    })
+    if (!isConfirmed) return
+    try {
+      await api.post(`/proposals/payments/${paymentId}/dispute/`, { reason: reason || '' })
+      Swal.fire({ icon: 'warning', title: 'Marked Disputed', timer: 1500, showConfirmButton: false })
+      fetchData(activeTab, searchTerm)
+    } catch (e) {
+      Swal.fire({ icon: 'error', title: 'Failed', text: e.response?.data?.detail || 'Could not dispute.' })
+    }
+  }
+
+  const handleRefundPayment = async (paymentId) => {
+    const { value: reason, isConfirmed } = await Swal.fire({
+      title: 'Refund this payment?',
+      input: 'textarea',
+      inputLabel: 'Reason (optional)',
+      inputPlaceholder: 'Reason for refund…',
+      showCancelButton: true,
+      confirmButtonColor: '#7c3aed',
+      confirmButtonText: 'Issue Refund',
+    })
+    if (!isConfirmed) return
+    try {
+      await api.post(`/proposals/payments/${paymentId}/admin_refund/`, { reason: reason || '' })
+      Swal.fire({ icon: 'success', title: 'Refunded!', timer: 1500, showConfirmButton: false })
+      fetchData(activeTab, searchTerm)
+    } catch (e) {
+      Swal.fire({ icon: 'error', title: 'Failed', text: e.response?.data?.detail || 'Could not refund.' })
+    }
+  }
+
   const handleReleasePayment = async (paymentId) => {
     const result = await Swal.fire({
       title: 'Release funds?',
@@ -394,7 +434,17 @@ export default function AdminPanel() {
               <tr key={idx} className="border-b hover:bg-gray-50">
                 {columns[activeTab]?.map(col => (
                   <td key={col} className="px-4 py-2">
-                    {col === 'is_featured' ? (
+                    {col === 'status' && activeTab === 'payments' ? (
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                        item.status === 'released'   ? 'bg-emerald-100 text-emerald-700' :
+                        item.status === 'in_escrow'  ? 'bg-blue-100 text-blue-700' :
+                        item.status === 'completed'  ? 'bg-amber-100 text-amber-700' :
+                        item.status === 'refunded'   ? 'bg-purple-100 text-purple-700' :
+                        item.status === 'disputed'   ? 'bg-orange-100 text-orange-700' :
+                        item.status === 'failed'     ? 'bg-rose-100 text-rose-700' :
+                        'bg-slate-100 text-slate-600'
+                      }`}>{item.status}</span>
+                    ) : col === 'is_featured' ? (
                       <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${item.is_featured ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
                         {item.is_featured ? '⭐ Featured' : 'No'}
                       </span>
@@ -413,6 +463,22 @@ export default function AdminPanel() {
                         className="rounded bg-emerald-600 px-3 py-1 text-xs font-bold text-white hover:bg-emerald-700"
                       >
                         Release ✓
+                      </button>
+                    )}
+                    {activeTab === 'payments' && !['released', 'refunded', 'disputed', 'failed'].includes(item.status) && (
+                      <button
+                        onClick={() => handleDisputePayment(item.id)}
+                        className="rounded bg-orange-500 px-3 py-1 text-xs font-bold text-white hover:bg-orange-600"
+                      >
+                        Dispute
+                      </button>
+                    )}
+                    {activeTab === 'payments' && !['released', 'refunded'].includes(item.status) && (
+                      <button
+                        onClick={() => handleRefundPayment(item.id)}
+                        className="rounded bg-purple-600 px-3 py-1 text-xs font-bold text-white hover:bg-purple-700"
+                      >
+                        Refund
                       </button>
                     )}
                     {activeTab === 'users' && ['consultant', 'freelancer', 'both'].includes(item.role) && (

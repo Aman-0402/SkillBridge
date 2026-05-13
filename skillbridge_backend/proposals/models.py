@@ -17,6 +17,7 @@ class Payment(models.Model):
         ('released',   'Released'),
         ('failed',     'Failed'),
         ('refunded',   'Refunded'),
+        ('disputed',   'Disputed'),
     )
 
     PAYMENT_METHOD_CHOICES = (
