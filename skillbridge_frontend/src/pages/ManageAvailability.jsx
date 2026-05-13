@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   FaCalendarCheck, FaCalendarPlus, FaTrash, FaCircleCheck,
-  FaClock, FaUser, FaIndianRupeeSign,
+  FaClock, FaUser, FaIndianRupeeSign, FaStar,
 } from 'react-icons/fa6'
 import Swal from 'sweetalert2'
 import api from '../services/api'
@@ -38,10 +38,27 @@ function SessionSkeleton() {
   )
 }
 
+/* ─── Star Rating picker ───────────────────────────────── */
+function StarRating({ value, onChange }) {
+  return (
+    <div className="flex gap-1">
+      {[1, 2, 3, 4, 5].map(n => (
+        <button key={n} type="button" onClick={() => onChange(n)}>
+          <FaStar className={`text-xl ${n <= value ? 'text-amber-400' : 'text-slate-200'}`} />
+        </button>
+      ))}
+    </div>
+  )
+}
+
 /* ─── CLIENT VIEW — booked sessions ───────────────────── */
 function ClientAppointments() {
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
+  const [reviewSession, setReviewSession] = useState(null)
+  const [reviewRating, setReviewRating] = useState(5)
+  const [reviewComment, setReviewComment] = useState('')
+  const [reviewLoading, setReviewLoading] = useState(false)
 
   useEffect(() => {
     api.get('/consultations/sessions/my_sessions/')
@@ -67,6 +84,37 @@ function ClientAppointments() {
       Swal.fire({ icon: 'success', title: 'Cancelled', timer: 1500, showConfirmButton: false })
     } catch {
       Swal.fire({ icon: 'error', title: 'Failed to cancel', text: 'Please try again.' })
+    }
+  }
+
+  const openReview = (session) => {
+    setReviewSession(session)
+    setReviewRating(5)
+    setReviewComment('')
+  }
+
+  const submitReview = async () => {
+    if (!reviewComment.trim()) {
+      Swal.fire({ icon: 'warning', title: 'Add a comment', text: 'Please write something about your experience.', timer: 2000, showConfirmButton: false })
+      return
+    }
+    setReviewLoading(true)
+    try {
+      await api.post('/consultations/reviews/', {
+        session: reviewSession.id,
+        rating: reviewRating,
+        comment: reviewComment.trim(),
+      })
+      setSessions(prev => prev.map(s =>
+        s.id === reviewSession.id ? { ...s, review: { rating: reviewRating, comment: reviewComment } } : s
+      ))
+      setReviewSession(null)
+      Swal.fire({ icon: 'success', title: 'Review submitted!', timer: 1800, showConfirmButton: false })
+    } catch (err) {
+      const msg = err.response?.data?.detail || err.response?.data?.non_field_errors?.[0] || 'Failed to submit review.'
+      Swal.fire({ icon: 'error', title: 'Error', text: msg })
+    } finally {
+      setReviewLoading(false)
     }
   }
 
@@ -122,8 +170,16 @@ function ClientAppointments() {
                     {session.description && (
                       <p className="text-xs text-slate-400 line-clamp-2">{session.description}</p>
                     )}
+                    {session.review && (
+                      <div className="mt-2 flex items-center gap-1.5">
+                        {[1,2,3,4,5].map(n => (
+                          <FaStar key={n} className={`text-xs ${n <= session.review.rating ? 'text-amber-400' : 'text-slate-200'}`} />
+                        ))}
+                        <span className="text-xs text-slate-400">"{session.review.comment}"</span>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex shrink-0 flex-col items-end gap-2">
                     <StatusBadge status={session.status} />
                     {session.status === 'pending' && (
                       <button
@@ -133,6 +189,19 @@ function ClientAppointments() {
                         Cancel
                       </button>
                     )}
+                    {session.status === 'completed' && !session.review && (
+                      <button
+                        onClick={() => openReview(session)}
+                        className="flex items-center gap-1.5 rounded-lg bg-amber-50 border border-amber-200 px-3 py-1.5 text-xs font-black text-amber-700 hover:bg-amber-100"
+                      >
+                        <FaStar className="text-amber-500" /> Leave Review
+                      </button>
+                    )}
+                    {session.status === 'completed' && session.review && (
+                      <span className="flex items-center gap-1 text-xs font-black text-emerald-600">
+                        <FaCircleCheck /> Reviewed
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -140,6 +209,51 @@ function ClientAppointments() {
           </div>
         )}
       </div>
+
+      {/* Review modal */}
+      {reviewSession && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-black text-slate-950">Rate your session</h3>
+            <p className="mt-0.5 text-sm text-slate-500">
+              Session with <span className="font-black">{reviewSession.consultant?.username}</span>
+            </p>
+
+            <div className="mt-5 space-y-4">
+              <div>
+                <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Rating</p>
+                <StarRating value={reviewRating} onChange={setReviewRating} />
+              </div>
+              <div>
+                <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Comment</p>
+                <textarea
+                  value={reviewComment}
+                  onChange={e => setReviewComment(e.target.value)}
+                  rows={4}
+                  placeholder="Share your experience with this consultant..."
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
+                />
+              </div>
+            </div>
+
+            <div className="mt-5 flex gap-3">
+              <button
+                onClick={() => setReviewSession(null)}
+                className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-black text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitReview}
+                disabled={reviewLoading}
+                className="flex-1 rounded-xl bg-blue-600 py-2.5 text-sm font-black text-white hover:bg-blue-500 disabled:opacity-60"
+              >
+                {reviewLoading ? 'Submitting…' : 'Submit Review'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

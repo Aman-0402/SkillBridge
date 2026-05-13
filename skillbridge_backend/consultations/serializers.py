@@ -9,10 +9,13 @@ class ConsultantAvailabilitySerializer(serializers.ModelSerializer):
 
 class ReviewSerializer(serializers.ModelSerializer):
     reviewer = UserSerializer(read_only=True)
+    session = serializers.PrimaryKeyRelatedField(
+        queryset=ConsultationSession.objects.all(), write_only=True
+    )
 
     class Meta:
         model = Review
-        fields = ['id', 'reviewer', 'rating', 'comment', 'created_at']
+        fields = ['id', 'session', 'reviewer', 'rating', 'comment', 'created_at']
         read_only_fields = ['id', 'created_at', 'reviewer']
 
 class ConsultationSessionSerializer(serializers.ModelSerializer):

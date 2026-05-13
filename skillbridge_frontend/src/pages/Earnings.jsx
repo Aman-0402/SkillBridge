@@ -1,127 +1,141 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import api from '../services/api'
 import { useAuth } from '../hooks/useAuth'
+import { formatCurrency } from '../utils/formatters'
 
 export default function Earnings() {
   const { user } = useAuth()
-  const [earnings, setEarnings] = useState(null)
+  const isClient = user?.role === 'client'
+
+  const [summary, setSummary] = useState(null)
   const [payments, setPayments] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchEarnings()
-  }, [])
+    const endpoint = isClient
+      ? '/proposals/payments/my_payments/'
+      : '/proposals/payments/my_earnings/'
 
-  const fetchEarnings = async () => {
-    try {
-      const response = await api.get('/proposals/payments/my_earnings/')
-      setEarnings(response.data)
-      setPayments(Array.isArray(response.data.payments) ? response.data.payments : response.data.payments.results || [])
-    } catch (error) {
-      console.error('Failed to fetch earnings:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+    api.get(endpoint)
+      .then(res => {
+        const data = res.data
+        if (isClient) {
+          // my_payments returns plain array
+          const list = Array.isArray(data) ? data : []
+          setPayments(list)
+          setSummary({ total_spent: list.reduce((s, p) => s + Number(p.amount || 0), 0) })
+        } else {
+          setSummary(data)
+          setPayments(Array.isArray(data.payments) ? data.payments : data.payments?.results || [])
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [isClient])
 
-  if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>
+  const totalKey = isClient ? 'total_spent' : 'total_earned'
+  const totalValue = summary?.[totalKey] ?? 0
+  const avgValue = payments.length > 0 ? totalValue / payments.length : 0
+
+  if (loading) return (
+    <div className="space-y-6">
+      <div className="h-8 w-48 animate-pulse rounded-lg bg-slate-200" />
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="animate-pulse rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="h-3 w-24 rounded bg-slate-100" />
+            <div className="mt-3 h-8 w-20 rounded-lg bg-slate-200" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-indigo-600">ConsultME</h1>
-          <Link to="/dashboard" className="text-gray-600 hover:text-gray-900">Dashboard</Link>
+    <div className="space-y-6">
+      <div>
+        <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">Finance</p>
+        <h1 className="mt-1 text-2xl font-black text-slate-950">
+          {isClient ? 'Payment History' : 'My Earnings'}
+        </h1>
+      </div>
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {[
+          {
+            label: isClient ? 'Total Spent' : 'Total Earned',
+            value: formatCurrency(totalValue),
+            color: isClient ? 'text-rose-600' : 'text-emerald-600',
+          },
+          {
+            label: isClient ? 'Total Payments Made' : 'Completed Payments',
+            value: payments.length,
+            color: 'text-blue-600',
+          },
+          {
+            label: 'Average Payment',
+            value: formatCurrency(avgValue),
+            color: 'text-violet-600',
+          },
+        ].map(({ label, value, color }) => (
+          <div key={label} className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-wide text-slate-500">{label}</p>
+            <p className={`mt-2 text-3xl font-black ${color}`}>{value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Payment table */}
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 px-6 py-4">
+          <p className="font-black text-slate-950">
+            {isClient ? 'Payments Made' : 'Payment History'}
+          </p>
         </div>
-      </nav>
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-8">My Earnings</h2>
-
-        {/* Earnings Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
-            <p className="text-gray-600 text-sm mb-2">Total Earned</p>
-            <p className="text-4xl font-bold text-green-600">${earnings?.total_earned || 0}</p>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <p className="text-gray-600 text-sm mb-2">Completed Payments</p>
-            <p className="text-4xl font-bold text-blue-600">{payments.length}</p>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <p className="text-gray-600 text-sm mb-2">Average Payment</p>
-            <p className="text-4xl font-bold text-indigo-600">
-              ${payments.length > 0 ? (earnings?.total_earned / payments.length).toFixed(2) : 0}
-            </p>
-          </div>
-        </div>
-
-        {/* Payments Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="p-6 border-b">
-            <h3 className="text-xl font-bold text-gray-900">Payment History</h3>
-          </div>
-
-          {payments.length === 0 ? (
-            <div className="p-6 text-center text-gray-600">
-              No payments received yet. Complete proposals to earn money!
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Transaction ID
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Project
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Amount
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Date
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {payments.map(payment => (
-                    <tr key={payment.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm font-mono text-gray-600">
-                        {payment.transaction_id}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {payment.proposal?.project?.title || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">
-                        ${payment.amount}
-                      </td>
-                      <td className="px-6 py-4 text-sm">
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          payment.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          payment.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
-                          {payment.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {new Date(payment.completed_at).toLocaleDateString()}
-                      </td>
-                    </tr>
+        {payments.length === 0 ? (
+          <p className="py-12 text-center text-sm text-slate-400">
+            {isClient ? 'No payments made yet.' : 'No payments received yet. Complete proposals to earn.'}
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  {['Transaction ID', isClient ? 'Paid To' : 'Project', 'Amount', 'Status', 'Date'].map(h => (
+                    <th key={h} className="px-6 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500">{h}</th>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {payments.map(payment => (
+                  <tr key={payment.id} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-4 font-mono text-xs text-slate-600">{payment.transaction_id || '—'}</td>
+                    <td className="px-6 py-4 text-slate-900">
+                      {isClient
+                        ? (payment.paid_to?.username || payment.proposal?.freelancer || '—')
+                        : (payment.proposal?.project?.title || '—')}
+                    </td>
+                    <td className="px-6 py-4 font-black text-slate-900">{formatCurrency(payment.amount)}</td>
+                    <td className="px-6 py-4">
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-black ${
+                        payment.status === 'completed' ? 'bg-emerald-50 text-emerald-700' :
+                        payment.status === 'pending'   ? 'bg-amber-50 text-amber-700' :
+                        'bg-rose-50 text-rose-700'
+                      }`}>
+                        {payment.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-slate-500">
+                      {payment.completed_at ? new Date(payment.completed_at).toLocaleDateString('en-IN') : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   )

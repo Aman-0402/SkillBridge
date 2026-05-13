@@ -55,6 +55,10 @@ class User(AbstractUser):
     kyc_submitted_at = models.DateTimeField(blank=True, null=True)
     kyc_rejection_reason = models.TextField(blank=True, null=True)
 
+    # Availability & presence
+    timezone = models.CharField(max_length=50, default='Asia/Kolkata')
+    is_online = models.BooleanField(default=False)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -79,9 +83,23 @@ class Skill(models.Model):
 
     class Meta:
         unique_together = ('user', 'name')
+        indexes = [models.Index(fields=['name'])]
 
     def __str__(self):
         return f"{self.user.username} - {self.name}"
+
+
+class ExpertiseTag(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='expertise_tags')
+    tag = models.CharField(max_length=100)
+
+    class Meta:
+        unique_together = ('user', 'tag')
+        indexes = [models.Index(fields=['tag'])]
+        ordering = ['tag']
+
+    def __str__(self):
+        return f"{self.user.username} — {self.tag}"
 
 
 class Experience(models.Model):

@@ -104,4 +104,15 @@ class ReviewViewSet(viewsets.ModelViewSet):
         return ReviewSerializer
 
     def perform_create(self, serializer):
-        serializer.save(reviewer=self.request.user)
+        session = serializer.validated_data['session']
+        user = self.request.user
+        if session.status != 'completed':
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError('Can only review completed sessions.')
+        if session.client != user:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Only the client of this session can leave a review.')
+        if hasattr(session, 'review'):
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError('Review already submitted for this session.')
+        serializer.save(reviewer=user)
