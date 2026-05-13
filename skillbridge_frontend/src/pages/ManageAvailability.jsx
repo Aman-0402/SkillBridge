@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   FaCalendarCheck, FaCalendarPlus, FaTrash, FaCircleCheck,
   FaClock, FaUser, FaIndianRupeeSign, FaStar,
+  FaChevronLeft, FaChevronRight, FaList, FaCalendarDays,
 } from 'react-icons/fa6'
 import Swal from 'sweetalert2'
 import api from '../services/api'
@@ -51,10 +52,144 @@ function StarRating({ value, onChange }) {
   )
 }
 
+/* ─── Session calendar ─────────────────────────────────── */
+function SessionCalendar({ sessions }) {
+  const now = new Date()
+  const [year, setYear] = useState(now.getFullYear())
+  const [month, setMonth] = useState(now.getMonth())
+  const [selected, setSelected] = useState(null)
+
+  const prevMonth = () => month === 0 ? (setMonth(11), setYear(y => y - 1)) : setMonth(m => m - 1)
+  const nextMonth = () => month === 11 ? (setMonth(0), setYear(y => y + 1)) : setMonth(m => m + 1)
+
+  const pad = n => String(n).padStart(2, '0')
+  const toKey = (y, m, d) => `${y}-${pad(m + 1)}-${pad(d)}`
+
+  const firstDOW = new Date(year, month, 1).getDay()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const todayKey = toKey(now.getFullYear(), now.getMonth(), now.getDate())
+
+  const byDate = {}
+  sessions.forEach(s => {
+    if (s.scheduled_date) {
+      byDate[s.scheduled_date] = byDate[s.scheduled_date] || []
+      byDate[s.scheduled_date].push(s)
+    }
+  })
+
+  const cells = [
+    ...Array(firstDOW).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ]
+
+  const DOT = { pending: 'bg-amber-400', confirmed: 'bg-blue-500', completed: 'bg-emerald-500', cancelled: 'bg-rose-400' }
+  const monthLabel = new Date(year, month).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+  const selectedSessions = selected ? byDate[selected] || [] : []
+
+  return (
+    <div className="space-y-3">
+      {/* Month navigation */}
+      <div className="flex items-center gap-2">
+        <button onClick={prevMonth} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50">
+          <FaChevronLeft className="text-xs" />
+        </button>
+        <span className="flex-1 text-center text-sm font-black text-slate-950">{monthLabel}</span>
+        <button onClick={nextMonth} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50">
+          <FaChevronRight className="text-xs" />
+        </button>
+      </div>
+
+      {/* Day-of-week headers */}
+      <div className="grid grid-cols-7 text-center">
+        {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => (
+          <div key={d} className="py-1 text-[10px] font-black text-slate-400">{d}</div>
+        ))}
+      </div>
+
+      {/* Calendar grid */}
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map((d, i) => {
+          if (!d) return <div key={`e-${i}`} />
+          const key = toKey(year, month, d)
+          const daySessions = byDate[key] || []
+          const isToday = key === todayKey
+          const isSelected = selected === key
+          return (
+            <button
+              key={key}
+              onClick={() => setSelected(isSelected ? null : key)}
+              className={`flex flex-col items-center rounded-xl py-2 text-sm font-black transition ${
+                isSelected
+                  ? 'bg-blue-600 text-white'
+                  : isToday
+                    ? 'bg-blue-50 text-blue-700'
+                    : daySessions.length > 0
+                      ? 'bg-slate-50 text-slate-900 hover:bg-slate-100'
+                      : 'text-slate-400 hover:bg-slate-50'
+              }`}
+            >
+              {d}
+              {daySessions.length > 0 && (
+                <div className="mt-0.5 flex gap-0.5">
+                  {daySessions.slice(0, 3).map((s, si) => (
+                    <span key={si} className={`h-1.5 w-1.5 rounded-full ${isSelected ? 'bg-white/70' : DOT[s.status] || 'bg-slate-300'}`} />
+                  ))}
+                </div>
+              )}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Legend */}
+      <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-slate-100 pt-3">
+        {Object.entries(DOT).map(([status, cls]) => (
+          <span key={status} className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 capitalize">
+            <span className={`h-2 w-2 rounded-full ${cls}`} /> {status}
+          </span>
+        ))}
+      </div>
+
+      {/* Selected day detail */}
+      {selected && selectedSessions.length === 0 && (
+        <p className="rounded-xl border border-dashed border-slate-200 py-6 text-center text-sm text-slate-400">
+          No sessions on this day.
+        </p>
+      )}
+      {selectedSessions.length > 0 && (
+        <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50 p-4">
+          <p className="mb-3 text-xs font-black uppercase tracking-wide text-slate-500">
+            {new Date(`${selected}T00:00:00`).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </p>
+          {selectedSessions.map(s => (
+            <div key={s.id} className="rounded-xl border border-slate-200 bg-white p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-black text-slate-950">{s.title || s.session_type}</p>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {s.start_time} – {s.end_time}
+                    {(s.client?.username || s.consultant?.username)
+                      ? ` · ${s.client?.username || s.consultant?.username}`
+                      : ''}
+                  </p>
+                </div>
+                <span className={`shrink-0 rounded-lg px-2 py-0.5 text-[10px] font-black capitalize ${STATUS_STYLES[s.status] || 'bg-slate-100 text-slate-600'}`}>
+                  {s.status}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 /* ─── CLIENT VIEW — booked sessions ───────────────────── */
 function ClientAppointments() {
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
+  const [viewMode, setViewMode] = useState('list')
   const [reviewSession, setReviewSession] = useState(null)
   const [reviewRating, setReviewRating] = useState(5)
   const [reviewComment, setReviewComment] = useState('')
@@ -129,9 +264,23 @@ function ClientAppointments() {
         <div className="mb-4 flex items-center gap-2">
           <FaCalendarCheck className="text-blue-600" />
           <h2 className="font-black text-slate-950">Booked Sessions</h2>
-          <span className="ml-auto rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-black text-blue-700">
+          <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-black text-blue-700">
             {sessions.length}
           </span>
+          <div className="ml-auto flex gap-1">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${viewMode === 'list' ? 'border-blue-300 bg-blue-50 text-blue-600' : 'border-slate-200 text-slate-400 hover:bg-slate-50'}`}
+            >
+              <FaList className="text-xs" />
+            </button>
+            <button
+              onClick={() => setViewMode('calendar')}
+              className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${viewMode === 'calendar' ? 'border-blue-300 bg-blue-50 text-blue-600' : 'border-slate-200 text-slate-400 hover:bg-slate-50'}`}
+            >
+              <FaCalendarDays className="text-xs" />
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -146,6 +295,8 @@ function ClientAppointments() {
               Browse consultants and book your first session.
             </p>
           </div>
+        ) : viewMode === 'calendar' ? (
+          <SessionCalendar sessions={sessions} />
         ) : (
           <div className="space-y-3">
             {sessions.map(session => (
@@ -265,6 +416,7 @@ function ConsultantAvailability() {
   const [loading, setLoading] = useState(true)
   const [newSlot, setNewSlot] = useState({ day_of_week: 'monday', start_time: '09:00', end_time: '10:00' })
   const [saving, setSaving] = useState(false)
+  const [viewMode, setViewMode] = useState('list')
 
   useEffect(() => {
     Promise.all([
@@ -431,9 +583,23 @@ function ConsultantAvailability() {
         <div className="mb-4 flex items-center gap-2">
           <FaCalendarCheck className="text-emerald-600" />
           <h2 className="font-black text-slate-950">Incoming Sessions</h2>
-          <span className="ml-auto rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-black text-emerald-700">
+          <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-black text-emerald-700">
             {sessions.length}
           </span>
+          <div className="ml-auto flex gap-1">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${viewMode === 'list' ? 'border-emerald-300 bg-emerald-50 text-emerald-600' : 'border-slate-200 text-slate-400 hover:bg-slate-50'}`}
+            >
+              <FaList className="text-xs" />
+            </button>
+            <button
+              onClick={() => setViewMode('calendar')}
+              className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${viewMode === 'calendar' ? 'border-emerald-300 bg-emerald-50 text-emerald-600' : 'border-slate-200 text-slate-400 hover:bg-slate-50'}`}
+            >
+              <FaCalendarDays className="text-xs" />
+            </button>
+          </div>
         </div>
         {loading ? (
           <div className="space-y-3">
@@ -441,6 +607,8 @@ function ConsultantAvailability() {
           </div>
         ) : sessions.length === 0 ? (
           <p className="py-8 text-center text-sm text-slate-400">No sessions booked yet.</p>
+        ) : viewMode === 'calendar' ? (
+          <SessionCalendar sessions={sessions} />
         ) : (
           <div className="space-y-3">
             {sessions.map(session => (
