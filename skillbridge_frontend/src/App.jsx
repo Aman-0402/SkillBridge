@@ -34,6 +34,7 @@ import AdminDashboard from './pages/AdminDashboard'
 import AdminPanel from './pages/AdminPanel'
 import ProposalTemplates from './pages/ProposalTemplates'
 import Clients from './pages/Clients'
+import Invoice from './pages/Invoice'
 
 function App() {
   return (
@@ -78,6 +79,7 @@ function App() {
             <Route path="/stats" element={<DashboardStats />} />
             <Route path="/proposal-templates" element={<ProposalTemplates />} />
             <Route path="/clients" element={<Clients />} />
+            <Route path="/invoice/:paymentId" element={<Invoice />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/admin/panel" element={<AdminPanel />} />
           </Route>

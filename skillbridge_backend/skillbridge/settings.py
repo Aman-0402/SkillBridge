@@ -152,6 +152,11 @@ SIMPLE_JWT = {
 
 CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:5173').split(',')
 
+# Razorpay — swap placeholder values with real keys from Razorpay Dashboard
+RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID', 'rzp_test_PLACEHOLDER')
+RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET', 'PLACEHOLDER_SECRET')
+RAZORPAY_WEBHOOK_SECRET = os.getenv('RAZORPAY_WEBHOOK_SECRET', 'PLACEHOLDER_WEBHOOK')
+
 ASGI_APPLICATION = 'skillbridge.asgi.application'
 
 CHANNEL_LAYERS = {

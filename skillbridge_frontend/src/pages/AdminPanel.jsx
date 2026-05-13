@@ -139,7 +139,8 @@ export default function AdminPanel() {
         proposals: '/chat/admin/proposals/',
         payments: '/chat/admin/payments/',
         jobs: '/chat/admin/jobs/',
-        consultations: '/chat/admin/consultations/'
+        consultations: '/chat/admin/consultations/',
+        withdrawals: '/chat/admin/withdrawals/',
       }
       const response = await api.get(endpoints[tab], {
         params: search ? { search } : {}
@@ -198,6 +199,56 @@ export default function AdminPanel() {
     }
   }
 
+  const handleReleasePayment = async (paymentId) => {
+    const result = await Swal.fire({
+      title: 'Release funds?',
+      text: 'This will move funds from escrow to the freelancer/consultant wallet.',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#16a34a',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Release',
+    })
+    if (!result.isConfirmed) return
+    try {
+      await api.post(`/proposals/payments/${paymentId}/release/`)
+      Swal.fire({ icon: 'success', title: 'Released!', timer: 1500, showConfirmButton: false })
+      fetchData(activeTab, searchTerm)
+    } catch (e) {
+      Swal.fire({ icon: 'error', title: 'Failed', text: e.response?.data?.detail || 'Could not release.' })
+    }
+  }
+
+  const handleApproveWithdrawal = async (withdrawalId) => {
+    try {
+      await api.post('/chat/admin/approve_withdrawal/', { withdrawal_id: withdrawalId })
+      Swal.fire({ icon: 'success', title: 'Approved!', timer: 1500, showConfirmButton: false })
+      fetchData('withdrawals')
+    } catch (e) {
+      Swal.fire({ icon: 'error', title: 'Failed', text: e.response?.data?.detail || 'Could not approve.' })
+    }
+  }
+
+  const handleRejectWithdrawal = async (withdrawalId) => {
+    const { value: reason, isConfirmed } = await Swal.fire({
+      title: 'Reject withdrawal?',
+      input: 'textarea',
+      inputLabel: 'Reason (optional)',
+      inputPlaceholder: 'e.g. Insufficient verification…',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      confirmButtonText: 'Reject',
+    })
+    if (!isConfirmed) return
+    try {
+      await api.post('/chat/admin/reject_withdrawal/', { withdrawal_id: withdrawalId, reason: reason || '' })
+      Swal.fire({ icon: 'success', title: 'Rejected. Balance restored.', timer: 1800, showConfirmButton: false })
+      fetchData('withdrawals')
+    } catch (e) {
+      Swal.fire({ icon: 'error', title: 'Failed', text: e.response?.data?.detail || 'Could not reject.' })
+    }
+  }
+
   const handleToggleFeatured = async (userId, currentStatus) => {
     try {
       const res = await api.post(`/auth/toggle-featured/${userId}/`)
@@ -221,6 +272,7 @@ export default function AdminPanel() {
     payments: 'Search by project title or freelancer…',
     jobs: 'Search by title, client, or company…',
     consultations: 'Search by consultant or client username…',
+    withdrawals: '',
   }
 
   const handleSearch = (e) => {
@@ -253,11 +305,63 @@ export default function AdminPanel() {
     { id: 'payments', label: 'Payments', icon: '💰' },
     { id: 'jobs', label: 'Jobs', icon: '💼' },
     { id: 'consultations', label: 'Consultations', icon: '📞' },
+    { id: 'withdrawals', label: 'Withdrawals', icon: '💸' },
     { id: 'kyc', label: 'KYC Requests', icon: '🪪' },
   ]
 
   const renderTable = () => {
     if (loading) return <div className="text-center py-8">Loading...</div>
+
+    if (activeTab === 'withdrawals') {
+      if (!data.length) return <div className="text-center py-8 text-gray-600">No withdrawal requests.</div>
+      return (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-200">
+              <tr>
+                {['User', 'Amount', 'Status', 'Note', 'Requested', 'Actions'].map(h => (
+                  <th key={h} className="px-4 py-2 text-left font-semibold">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((w, idx) => (
+                <tr key={idx} className="border-b hover:bg-gray-50">
+                  <td className="px-4 py-2">
+                    <p className="font-semibold">{w.user?.username || '—'}</p>
+                    <p className="text-xs text-gray-500">{w.user?.email || ''}</p>
+                  </td>
+                  <td className="px-4 py-2 font-semibold">₹{parseFloat(w.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                  <td className="px-4 py-2">
+                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                      w.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
+                      w.status === 'rejected' ? 'bg-rose-100 text-rose-700' :
+                      'bg-amber-100 text-amber-700'
+                    }`}>{w.status}</span>
+                  </td>
+                  <td className="px-4 py-2 text-xs text-gray-500 max-w-[160px] truncate">{w.note || '—'}</td>
+                  <td className="px-4 py-2 text-xs text-gray-500">{w.created_at ? new Date(w.created_at).toLocaleDateString('en-IN') : '—'}</td>
+                  <td className="px-4 py-2">
+                    {w.status === 'pending' && (
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => handleApproveWithdrawal(w.id)}
+                          className="rounded bg-emerald-600 px-3 py-1 text-xs font-bold text-white hover:bg-emerald-700">
+                          Approve ✓
+                        </button>
+                        <button onClick={() => handleRejectWithdrawal(w.id)}
+                          className="rounded bg-red-600 px-3 py-1 text-xs font-bold text-white hover:bg-red-700">
+                          Reject ✗
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )
+    }
 
     const columns = {
       users: ['username', 'email', 'role', 'is_premium', 'is_featured', 'is_staff', 'date_joined'],
@@ -303,6 +407,14 @@ export default function AdminPanel() {
                 ))}
                 <td className="px-4 py-2">
                   <div className="flex items-center gap-2 flex-wrap">
+                    {activeTab === 'payments' && item.status === 'completed' && (
+                      <button
+                        onClick={() => handleReleasePayment(item.id)}
+                        className="rounded bg-emerald-600 px-3 py-1 text-xs font-bold text-white hover:bg-emerald-700"
+                      >
+                        Release ✓
+                      </button>
+                    )}
                     {activeTab === 'users' && ['consultant', 'freelancer', 'both'].includes(item.role) && (
                       <button
                         onClick={() => handleToggleFeatured(item.id, item.is_featured)}
@@ -372,8 +484,8 @@ export default function AdminPanel() {
           ))}
         </div>
 
-        {/* Search Bar — all tabs except KYC */}
-        {activeTab !== 'kyc' && (
+        {/* Search Bar — all tabs except KYC and Withdrawals */}
+        {activeTab !== 'kyc' && activeTab !== 'withdrawals' && (
           <div className="mb-4 space-y-3">
             <input
               type="text"
@@ -412,7 +524,7 @@ export default function AdminPanel() {
         {/* Data Table */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4 capitalize">{activeTab === 'kyc' ? 'Pending KYC Requests' : activeTab}</h2>
-          {activeTab === 'kyc' ? <KYCPanel /> : renderTable()}
+          {activeTab === 'kyc' ? <KYCPanel /> : (loading ? <div className="text-center py-8 text-sm text-gray-500">Loading…</div> : renderTable())}
         </div>
       </div>
     </div>

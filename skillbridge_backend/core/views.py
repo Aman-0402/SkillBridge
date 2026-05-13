@@ -9,7 +9,8 @@ from .analytics import get_client_stats, get_freelancer_stats, get_consultant_st
 from projects.models import Project, Proposal
 from jobs.models import Job
 from consultations.models import ConsultationSession
-from proposals.models import Payment
+from proposals.models import Payment, Withdrawal
+from proposals.serializers import WithdrawalSerializer
 
 User = get_user_model()
 
@@ -405,6 +406,49 @@ class AdminViewSet(viewsets.ViewSet):
             return Response({'detail': 'Payment deleted'}, status=status.HTTP_204_NO_CONTENT)
         except Payment.DoesNotExist:
             return Response({'detail': 'Payment not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=False, methods=['get'])
+    def withdrawals(self, request):
+        withdrawals = Withdrawal.objects.all().order_by('-created_at')
+        serializer = WithdrawalSerializer(withdrawals, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'])
+    def approve_withdrawal(self, request):
+        withdrawal_id = request.data.get('withdrawal_id')
+        if not withdrawal_id:
+            return Response({'detail': 'withdrawal_id required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            w = Withdrawal.objects.get(id=withdrawal_id)
+        except Withdrawal.DoesNotExist:
+            return Response({'detail': 'Withdrawal not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if w.status != 'pending':
+            return Response({'detail': f'Already {w.status}.'}, status=status.HTTP_400_BAD_REQUEST)
+        w.status = 'approved'
+        w.save()
+        return Response({'detail': 'Withdrawal approved.', 'status': 'approved'})
+
+    @action(detail=False, methods=['post'])
+    def reject_withdrawal(self, request):
+        withdrawal_id = request.data.get('withdrawal_id')
+        reason = request.data.get('reason', '')
+        if not withdrawal_id:
+            return Response({'detail': 'withdrawal_id required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            w = Withdrawal.objects.get(id=withdrawal_id)
+        except Withdrawal.DoesNotExist:
+            return Response({'detail': 'Withdrawal not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if w.status != 'pending':
+            return Response({'detail': f'Already {w.status}.'}, status=status.HTTP_400_BAD_REQUEST)
+        from proposals.models import EscrowWallet
+        from decimal import Decimal
+        wallet, _ = EscrowWallet.objects.get_or_create(user=w.user)
+        wallet.balance += w.amount
+        wallet.save()
+        w.status = 'rejected'
+        w.note = reason
+        w.save()
+        return Response({'detail': 'Withdrawal rejected. Balance restored.', 'status': 'rejected'})
 
     @action(detail=False, methods=['post'])
     def toggle_premium(self, request):
