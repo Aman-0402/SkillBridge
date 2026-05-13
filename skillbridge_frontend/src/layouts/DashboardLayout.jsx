@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -6,11 +6,102 @@ import {
   FaCalendarCheck, FaClockRotateLeft, FaFolderOpen,
   FaRightFromBracket, FaTableColumns, FaUser, FaUserTie,
   FaBriefcase, FaChartPie, FaShieldHalved, FaMessage,
-  FaIndianRupeeSign,
+  FaIndianRupeeSign, FaBell, FaCircleCheck,
 } from 'react-icons/fa6'
 import logoBw from '../assets/newlogo.png'
 import ScrollToTop from '../components/utils/ScrollToTop'
 import { useAuth } from '../hooks/useAuth'
+import api from '../services/api'
+
+/* ─── Notification helpers ───────────────────────────────── */
+const TYPE_ICON = {
+  proposal_accepted: '🎉', proposal_received: '📋',
+  session_booked: '📅', session_confirmed: '✅',
+  session_cancelled: '❌', session_completed: '🏁',
+  review_received: '⭐', kyc_approved: '🔵',
+  kyc_rejected: '❌', job_application: '💼', general: '🔔',
+}
+
+function timeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const m = Math.floor(diff / 60000)
+  if (m < 1) return 'just now'
+  if (m < 60) return `${m}m ago`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h ago`
+  return `${Math.floor(h / 24)}d ago`
+}
+
+function NotificationPanel({ onClose }) {
+  const [notifs, setNotifs] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  const fetchNotifs = useCallback(() => {
+    api.get('/chat/notifications/list_notifications/')
+      .then(res => setNotifs(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setNotifs([]))
+      .finally(() => setLoading(false))
+  }, [])
+
+  useEffect(() => { fetchNotifs() }, [fetchNotifs])
+
+  const markRead = async (id) => {
+    await api.post('/chat/notifications/mark_read/', { id })
+    setNotifs(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
+  }
+
+  const markAllRead = async () => {
+    await api.post('/chat/notifications/mark_all_read/')
+    setNotifs(prev => prev.map(n => ({ ...n, is_read: true })))
+  }
+
+  const unread = notifs.filter(n => !n.is_read).length
+
+  return (
+    <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-200/60">
+      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+        <p className="font-black text-slate-950">
+          Notifications {unread > 0 && <span className="ml-1.5 rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-black text-white">{unread}</span>}
+        </p>
+        <div className="flex items-center gap-2">
+          {unread > 0 && (
+            <button onClick={markAllRead} className="text-xs font-black text-blue-600 hover:text-blue-700">Mark all read</button>
+          )}
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><FaXmark /></button>
+        </div>
+      </div>
+
+      <div className="max-h-96 overflow-y-auto">
+        {loading ? (
+          <div className="space-y-2 p-4">
+            {[1,2,3].map(i => <div key={i} className="h-12 animate-pulse rounded-xl bg-slate-100" />)}
+          </div>
+        ) : notifs.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 py-10 text-center">
+            <FaBell className="text-3xl text-slate-200" />
+            <p className="text-sm text-slate-400">No notifications yet</p>
+          </div>
+        ) : (
+          notifs.map(n => (
+            <button
+              key={n.id}
+              onClick={() => !n.is_read && markRead(n.id)}
+              className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-slate-50 ${!n.is_read ? 'bg-blue-50/60' : ''}`}
+            >
+              <span className="mt-0.5 shrink-0 text-lg">{TYPE_ICON[n.type] || '🔔'}</span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-black text-slate-950 leading-tight">{n.title}</p>
+                <p className="mt-0.5 text-xs text-slate-500 leading-snug line-clamp-2">{n.message}</p>
+                <p className="mt-1 text-[10px] font-bold text-slate-400">{timeAgo(n.created_at)}</p>
+              </div>
+              {!n.is_read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-500" />}
+            </button>
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
 
 const SIDEBAR_LINKS = {
   client: [
@@ -114,8 +205,31 @@ function DashboardLayout() {
   const location = useLocation()
   const { user } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [notifOpen, setNotifOpen] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
+  const notifRef = useRef(null)
 
   const role = user?.role || 'client'
+
+  useEffect(() => {
+    const fetchCount = () => {
+      api.get('/chat/notifications/unread_count/')
+        .then(res => setUnreadCount(res.data.count || 0))
+        .catch(() => {})
+    }
+    fetchCount()
+    const interval = setInterval(fetchCount, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    if (!notifOpen) return
+    const handler = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [notifOpen])
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-950 lg:grid lg:grid-cols-[280px_1fr]">
@@ -178,10 +292,28 @@ function DashboardLayout() {
               <span className={`hidden rounded-full px-3 py-1 text-xs font-black sm:inline-flex ${
                 role === 'admin' ? 'bg-rose-100 text-rose-700' :
                 role === 'client' ? 'bg-blue-100 text-blue-700' :
+                role === 'both' ? 'bg-purple-100 text-purple-700' :
                 'bg-emerald-100 text-emerald-700'
               }`}>
-                {role.charAt(0).toUpperCase() + role.slice(1)}
+                {role === 'both' ? 'Freelancer + Consultant' : role.charAt(0).toUpperCase() + role.slice(1)}
               </span>
+
+              {/* Bell */}
+              <div className="relative" ref={notifRef}>
+                <button
+                  onClick={() => { setNotifOpen(v => !v); setUnreadCount(0) }}
+                  className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:border-blue-300 hover:text-blue-600"
+                >
+                  <FaBell className="text-sm" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[9px] font-black text-white">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+                {notifOpen && <NotificationPanel onClose={() => setNotifOpen(false)} />}
+              </div>
+
               <NavLink
                 to="/"
                 className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 hover:border-blue-300 hover:text-blue-700"

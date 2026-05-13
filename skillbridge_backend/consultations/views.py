@@ -45,7 +45,13 @@ class ConsultationSessionViewSet(viewsets.ModelViewSet):
         return ConsultationSessionSerializer
 
     def perform_create(self, serializer):
-        serializer.save(client=self.request.user)
+        session = serializer.save(client=self.request.user)
+        from core.models import create_notification
+        create_notification(
+            session.consultant, 'session_booked',
+            'New Session Booked 📅',
+            f'{self.request.user.username} booked a {session.session_type} session on {session.scheduled_date}.'
+        )
 
     @action(detail=False, methods=['get'], permission_classes=[AllowAny])
     def available_consultants(self, request):
@@ -96,6 +102,12 @@ class ConsultationSessionViewSet(viewsets.ModelViewSet):
 
         session.status = 'confirmed'
         session.save()
+        from core.models import create_notification
+        create_notification(
+            session.client, 'session_confirmed',
+            'Session Confirmed ✅',
+            f'{session.consultant.username} confirmed your session on {session.scheduled_date}.'
+        )
         return Response({'detail': 'Session confirmed'})
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
@@ -106,6 +118,13 @@ class ConsultationSessionViewSet(viewsets.ModelViewSet):
 
         session.status = 'cancelled'
         session.save()
+        from core.models import create_notification
+        other = session.client if session.consultant == request.user else session.consultant
+        create_notification(
+            other, 'session_cancelled',
+            'Session Cancelled ❌',
+            f'Your session on {session.scheduled_date} was cancelled.'
+        )
         return Response({'detail': 'Session cancelled'})
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
@@ -116,6 +135,12 @@ class ConsultationSessionViewSet(viewsets.ModelViewSet):
 
         session.status = 'completed'
         session.save()
+        from core.models import create_notification
+        create_notification(
+            session.client, 'session_completed',
+            'Session Completed 🎉',
+            f'Your session with {session.consultant.username} is complete. Leave a review!'
+        )
         return Response({'detail': 'Session completed'})
 
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
@@ -148,3 +173,9 @@ class ReviewViewSet(viewsets.ModelViewSet):
             from rest_framework.exceptions import ValidationError
             raise ValidationError('Review already submitted for this session.')
         serializer.save(reviewer=user)
+        from core.models import create_notification
+        create_notification(
+            session.consultant, 'review_received',
+            'New Review ⭐',
+            f'{user.username} left you a {serializer.validated_data.get("rating", "")}-star review.'
+        )

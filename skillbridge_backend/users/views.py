@@ -161,6 +161,8 @@ def kyc_approve(request, user_id):
         target.is_verified = True
         target.kyc_rejection_reason = None
         target.save()
+        from core.models import create_notification
+        create_notification(target, 'kyc_approved', 'KYC Verified ✅', 'Your identity has been verified. Blue tick is now active on your profile.')
         return Response({'detail': 'KYC approved.', 'kyc_status': 'verified'})
     except User.DoesNotExist:
         return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
@@ -181,6 +183,8 @@ def kyc_reject(request, user_id):
         target.is_verified = False
         target.kyc_rejection_reason = reason
         target.save()
+        from core.models import create_notification
+        create_notification(target, 'kyc_rejected', 'KYC Rejected ❌', f'Your KYC was rejected. Reason: {reason}')
         return Response({'detail': 'KYC rejected.', 'kyc_status': 'rejected'})
     except User.DoesNotExist:
         return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)

@@ -3,8 +3,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, BasePermission
 from django.contrib.auth import get_user_model
-from .models import Conversation, Message
-from .serializers import ConversationSerializer, ConversationListSerializer, MessageSerializer
+from .models import Conversation, Message, Notification
+from .serializers import ConversationSerializer, ConversationListSerializer, MessageSerializer, NotificationSerializer
 from .analytics import get_client_stats, get_freelancer_stats, get_consultant_stats, get_both_stats, get_admin_stats, get_user_growth, get_user_revenue_chart
 from projects.models import Project, Proposal
 from jobs.models import Job
@@ -388,3 +388,30 @@ class AdminViewSet(viewsets.ViewSet):
             return Response({'detail': f"Premium {'granted' if user.is_premium else 'revoked'}.", 'is_premium': user.is_premium})
         except User.DoesNotExist:
             return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+class NotificationViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=['get'])
+    def list_notifications(self, request):
+        notifs = Notification.objects.filter(user=request.user)[:30]
+        serializer = NotificationSerializer(notifs, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def unread_count(self, request):
+        count = Notification.objects.filter(user=request.user, is_read=False).count()
+        return Response({'count': count})
+
+    @action(detail=False, methods=['post'])
+    def mark_read(self, request):
+        notif_id = request.data.get('id')
+        if notif_id:
+            Notification.objects.filter(id=notif_id, user=request.user).update(is_read=True)
+        return Response({'detail': 'Marked read.'})
+
+    @action(detail=False, methods=['post'])
+    def mark_all_read(self, request):
+        Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+        return Response({'detail': 'All marked read.'})

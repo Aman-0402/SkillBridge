@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Conversation, Message
+from .models import Conversation, Message, Notification
 from users.serializers import UserSerializer
 
 class MessageSerializer(serializers.ModelSerializer):
@@ -46,3 +46,10 @@ class ConversationListSerializer(serializers.ModelSerializer):
         if request:
             return obj.messages.filter(is_read=False).exclude(sender=request.user).count()
         return 0
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['id', 'type', 'title', 'message', 'is_read', 'created_at']
+        read_only_fields = ['id', 'type', 'title', 'message', 'created_at']

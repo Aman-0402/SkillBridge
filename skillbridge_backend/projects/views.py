@@ -48,6 +48,18 @@ class ProjectViewSet(viewsets.ModelViewSet):
             proposal.status = 'accepted'
             proposal.save()
 
+            from core.models import create_notification
+            create_notification(
+                proposal.freelancer, 'proposal_accepted',
+                'Proposal Accepted! 🎉',
+                f'Your proposal on "{project.title}" was accepted. Get to work!'
+            )
+            create_notification(
+                request.user, 'proposal_received',
+                'You accepted a proposal',
+                f'You selected {proposal.freelancer.username} for "{project.title}".'
+            )
+
             return Response({'detail': 'Proposal accepted'})
         except Proposal.DoesNotExist:
             return Response({'detail': 'Proposal not found'}, status=status.HTTP_404_NOT_FOUND)
