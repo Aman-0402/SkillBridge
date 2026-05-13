@@ -188,3 +188,49 @@ def kyc_reject(request, user_id):
         return Response({'detail': 'KYC rejected.', 'kyc_status': 'rejected'})
     except User.DoesNotExist:
         return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def clients_list(request):
+    """List all client users with their open projects (for freelancer/consultant directory)."""
+    from django.db.models import Q, Count
+    search = request.query_params.get('search', '').strip()
+    clients = User.objects.filter(role='client').annotate(
+        open_project_count=Count('projects', filter=Q(projects__status='open'))
+    )
+    if search:
+        clients = clients.filter(
+            Q(username__icontains=search) |
+            Q(first_name__icontains=search) |
+            Q(last_name__icontains=search) |
+            Q(location__icontains=search)
+        )
+    clients = clients.order_by('-open_project_count', 'username')
+
+    data = []
+    for client in clients:
+        open_projects = list(
+            client.projects.filter(status='open')
+            .values('id', 'title', 'budget', 'budget_type', 'category')[:4]
+        )
+        pic = None
+        if client.profile_picture:
+            try:
+                pic = request.build_absolute_uri(client.profile_picture.url)
+            except Exception:
+                pass
+        data.append({
+            'id': client.id,
+            'username': client.username,
+            'first_name': client.first_name,
+            'last_name': client.last_name,
+            'bio': client.bio,
+            'location': client.location,
+            'is_online': client.is_online,
+            'profile_picture': pic,
+            'open_projects': open_projects,
+            'total_projects': client.projects.count(),
+            'open_project_count': client.open_project_count,
+        })
+    return Response(data)

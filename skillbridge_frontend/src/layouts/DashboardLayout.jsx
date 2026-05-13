@@ -6,7 +6,7 @@ import {
   FaCalendarCheck, FaClockRotateLeft, FaFolderOpen,
   FaRightFromBracket, FaTableColumns, FaUser, FaUserTie,
   FaBriefcase, FaChartPie, FaShieldHalved, FaMessage,
-  FaIndianRupeeSign, FaBell, FaCircleCheck, FaFileLines,
+  FaIndianRupeeSign, FaBell, FaCircleCheck, FaFileLines, FaUsers,
 } from 'react-icons/fa6'
 import logoBw from '../assets/newlogo.png'
 import ScrollToTop from '../components/utils/ScrollToTop'
@@ -117,6 +117,7 @@ const SIDEBAR_LINKS = {
     { label: 'Overview',     to: '/dashboard',            icon: FaTableColumns },
     { label: 'Projects',     to: '/projects',             icon: FaFolderOpen },
     { label: 'Jobs',         to: '/jobs',                 icon: FaBriefcase },
+    { label: 'Clients',      to: '/clients',              icon: FaUsers },
     { label: 'Availability', to: '/manage-availability',  icon: FaCalendarCheck },
     { label: 'Templates',    to: '/proposal-templates',   icon: FaFileLines },
     { label: 'Earnings',     to: '/earnings',             icon: FaClockRotateLeft },
@@ -127,6 +128,7 @@ const SIDEBAR_LINKS = {
     { label: 'Overview',     to: '/dashboard',            icon: FaTableColumns },
     { label: 'Sessions',     to: '/manage-availability',  icon: FaCalendarCheck },
     { label: 'Projects',     to: '/projects',             icon: FaFolderOpen },
+    { label: 'Clients',      to: '/clients',              icon: FaUsers },
     { label: 'Templates',    to: '/proposal-templates',   icon: FaFileLines },
     { label: 'Earnings',     to: '/earnings',             icon: FaClockRotateLeft },
     { label: 'Chat',         to: '/chat',                 icon: FaMessage },
@@ -138,6 +140,7 @@ const SIDEBAR_LINKS = {
     { label: 'Jobs',         to: '/jobs',                 icon: FaBriefcase },
     { label: 'Sessions',     to: '/manage-availability',  icon: FaCalendarCheck },
     { label: 'Consultants',  to: '/consultants',          icon: FaUserTie },
+    { label: 'Clients',      to: '/clients',              icon: FaUsers },
     { label: 'Templates',    to: '/proposal-templates',   icon: FaFileLines },
     { label: 'Earnings',     to: '/earnings',             icon: FaClockRotateLeft },
     { label: 'Chat',         to: '/chat',                 icon: FaMessage },
