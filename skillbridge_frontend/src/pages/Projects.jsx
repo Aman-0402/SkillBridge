@@ -1,8 +1,51 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { FaFolderPlus, FaFolderOpen, FaMagnifyingGlass, FaFileLines } from 'react-icons/fa6'
+import { FaFolderPlus, FaFolderOpen, FaMagnifyingGlass, FaFileLines, FaChevronLeft, FaChevronRight } from 'react-icons/fa6'
 import api from '../services/api'
 import { useAuth } from '../hooks/useAuth'
+
+const PAGE_SIZE = 8
+
+function Pagination({ page, totalPages, onPage }) {
+  if (totalPages <= 1) return null
+  const pages = Array.from({ length: totalPages }, (_, i) => i + 1)
+  const visible = pages.filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+  return (
+    <div className="flex items-center justify-center gap-1">
+      <button
+        onClick={() => onPage(page - 1)}
+        disabled={page === 1}
+        className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-blue-300 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <FaChevronLeft className="text-xs" />
+      </button>
+      {visible.reduce((acc, p, idx) => {
+        if (idx > 0 && p - visible[idx - 1] > 1) {
+          acc.push(<span key={`gap-${p}`} className="px-1 text-sm text-slate-400">…</span>)
+        }
+        acc.push(
+          <button
+            key={p}
+            onClick={() => onPage(p)}
+            className={`flex h-9 w-9 items-center justify-center rounded-xl text-sm font-black transition ${
+              p === page
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'border border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-600'
+            }`}
+          >{p}</button>
+        )
+        return acc
+      }, [])}
+      <button
+        onClick={() => onPage(page + 1)}
+        disabled={page === totalPages}
+        className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-blue-300 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <FaChevronRight className="text-xs" />
+      </button>
+    </div>
+  )
+}
 
 const STATUS_STYLES = {
   open:        'bg-blue-50 text-blue-700',
@@ -41,6 +84,7 @@ export default function Projects() {
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
 
   useEffect(() => {
     setLoading(true)
@@ -51,10 +95,14 @@ export default function Projects() {
       .finally(() => setLoading(false))
   }, [filter])
 
+  useEffect(() => { setPage(1) }, [filter, search])
+
   const filtered = projects.filter(p =>
     !search || p.title?.toLowerCase().includes(search.toLowerCase()) ||
     p.category?.toLowerCase().includes(search.toLowerCase())
   )
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   return (
     <div className="space-y-6">
@@ -126,39 +174,47 @@ export default function Projects() {
           )}
         </div>
       ) : (
-        <div className="space-y-4">
-          {filtered.map(project => (
-            <Link key={project.id} to={`/projects/${project.id}`} className="block">
-              <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-blue-300 hover:shadow-md">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="truncate text-base font-black text-slate-950">{project.title}</h3>
-                    <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-500">{project.description}</p>
+        <>
+          <div className="space-y-4">
+            {paginated.map(project => (
+              <Link key={project.id} to={`/projects/${project.id}`} className="block">
+                <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-blue-300 hover:shadow-md">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="truncate text-base font-black text-slate-950">{project.title}</h3>
+                      <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-500">{project.description}</p>
+                    </div>
+                    <span className={`shrink-0 self-start rounded-lg px-3 py-1 text-xs font-black capitalize ${STATUS_STYLES[project.status] || 'bg-slate-100 text-slate-600'}`}>
+                      {project.status?.replace('_', ' ')}
+                    </span>
                   </div>
-                  <span className={`shrink-0 self-start rounded-lg px-3 py-1 text-xs font-black capitalize ${STATUS_STYLES[project.status] || 'bg-slate-100 text-slate-600'}`}>
-                    {project.status?.replace('_', ' ')}
-                  </span>
-                </div>
-                <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs font-semibold text-slate-500">
-                  <span>₹{Number(project.budget).toLocaleString('en-IN')} · {project.budget_type}</span>
-                  {project.category && <span>📁 {project.category}</span>}
-                  {project.duration && <span>⏱ {project.duration}</span>}
-                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-black ${
-                    (project.proposal_count ?? 0) === 0
-                      ? 'bg-slate-100 text-slate-400'
-                      : (project.proposal_count ?? 0) >= 10
-                        ? 'bg-rose-100 text-rose-600'
-                        : 'bg-indigo-100 text-indigo-600'
-                  }`}>
-                    <FaFileLines className="text-[9px]" />
-                    {project.proposal_count ?? 0} proposal{project.proposal_count !== 1 ? 's' : ''}
-                  </span>
-                  {project.client?.username && <span>by {project.client.username}</span>}
-                </div>
-              </article>
-            </Link>
-          ))}
-        </div>
+                  <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs font-semibold text-slate-500">
+                    <span>₹{Number(project.budget).toLocaleString('en-IN')} · {project.budget_type}</span>
+                    {project.category && <span>📁 {project.category}</span>}
+                    {project.duration && <span>⏱ {project.duration}</span>}
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-black ${
+                      (project.proposal_count ?? 0) === 0
+                        ? 'bg-slate-100 text-slate-400'
+                        : (project.proposal_count ?? 0) >= 10
+                          ? 'bg-rose-100 text-rose-600'
+                          : 'bg-indigo-100 text-indigo-600'
+                    }`}>
+                      <FaFileLines className="text-[9px]" />
+                      {project.proposal_count ?? 0} proposal{project.proposal_count !== 1 ? 's' : ''}
+                    </span>
+                    {project.client?.username && <span>by {project.client.username}</span>}
+                  </div>
+                </article>
+              </Link>
+            ))}
+          </div>
+          <div className="flex items-center justify-between pt-2">
+            <p className="text-xs font-semibold text-slate-400">
+              {filtered.length} project{filtered.length !== 1 ? 's' : ''} · page {page} of {totalPages || 1}
+            </p>
+            <Pagination page={page} totalPages={totalPages} onPage={setPage} />
+          </div>
+        </>
       )}
     </div>
   )
