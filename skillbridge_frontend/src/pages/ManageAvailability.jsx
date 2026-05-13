@@ -271,7 +271,7 @@ function ConsultantAvailability() {
       api.get('/consultations/availability/'),
       api.get('/consultations/sessions/my_sessions/'),
     ]).then(([avail, sess]) => {
-      setAvailability(avail.data || [])
+      setAvailability(Array.isArray(avail.data) ? avail.data : avail.data.results || [])
       setSessions(Array.isArray(sess.data) ? sess.data : sess.data.results || [])
     }).catch(() => {}).finally(() => setLoading(false))
   }, [])

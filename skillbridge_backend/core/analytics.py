@@ -123,6 +123,54 @@ def get_admin_stats():
         'platform_earnings': Payment.objects.filter(status='completed').aggregate(Sum('amount'))['amount__sum'] or 0,
     }
 
+def get_user_revenue_chart(user):
+    """Monthly revenue for last 6 months — combines freelance payments + consulting sessions"""
+    from django.db.models.functions import TruncMonth
+    import datetime
+
+    now = timezone.now()
+    six_months_ago = now - timedelta(days=182)
+
+    # Build month list
+    months = []
+    for i in range(5, -1, -1):
+        d = now - timedelta(days=30 * i)
+        months.append(d.replace(day=1, hour=0, minute=0, second=0, microsecond=0))
+
+    # Freelance payments by month
+    freelance_qs = Payment.objects.filter(
+        proposal__freelancer=user,
+        status='completed',
+        created_at__gte=six_months_ago,
+    ).annotate(month=TruncMonth('created_at')).values('month').annotate(total=Sum('amount'))
+    freelance_map = {item['month'].replace(tzinfo=None): float(item['total'] or 0) for item in freelance_qs}
+
+    # Consulting sessions by month (use scheduled_date)
+    from consultations.models import ConsultationSession
+    session_qs = ConsultationSession.objects.filter(
+        consultant=user,
+        status='completed',
+        scheduled_date__gte=six_months_ago.date(),
+    )
+    consulting_map = {}
+    for s in session_qs:
+        key = s.scheduled_date.replace(day=1)
+        key_dt = datetime.datetime(key.year, key.month, 1)
+        consulting_map[key_dt] = consulting_map.get(key_dt, 0) + float(s.session_cost or 0)
+
+    chart = []
+    for m in months:
+        key = m.replace(tzinfo=None)
+        freelance = freelance_map.get(key, 0)
+        consulting = consulting_map.get(key, 0)
+        chart.append({
+            'month': m.strftime('%b %Y'),
+            'freelance': round(freelance, 2),
+            'consulting': round(consulting, 2),
+            'total': round(freelance + consulting, 2),
+        })
+    return chart
+
 def get_user_growth():
     """Get user growth statistics"""
     now = timezone.now()

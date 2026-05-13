@@ -6,6 +6,9 @@ import {
   FaIndianRupeeSign, FaChartLine, FaCircleCheck, FaHourglass,
   FaArrowRight, FaChartPie,
 } from 'react-icons/fa6'
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+} from 'recharts'
 import Button from '../../components/ui/Button'
 import { useAuth } from '../../hooks/useAuth'
 import api from '../../services/api'
@@ -371,6 +374,85 @@ function ConsultantPanels() {
   )
 }
 
+/* ─── Revenue Chart ──────────────────────────────────────── */
+function RevenueChart({ role }) {
+  const [data, setData] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.get('/chat/analytics/my_revenue_chart/')
+      .then(res => setData(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setData([]))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const hasData = data.some(d => d.total > 0)
+  const showBothLines = role === 'both'
+
+  function formatINR(val) {
+    return `₹${Number(val).toLocaleString('en-IN')}`
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mb-5 flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-black text-slate-950">Revenue — Last 6 Months</h2>
+          <p className="mt-0.5 text-sm text-slate-500">Your earnings from projects and sessions.</p>
+        </div>
+        <span className="flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-700">
+          <FaIndianRupeeSign className="text-[10px]" />
+          {formatINR(data.reduce((sum, d) => sum + (d.total || 0), 0))} total
+        </span>
+      </div>
+
+      {loading ? (
+        <div className="h-52 animate-pulse rounded-xl bg-slate-100" />
+      ) : !hasData ? (
+        <div className="flex h-52 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 text-center">
+          <FaChartLine className="text-2xl text-slate-300" />
+          <p className="text-sm text-slate-400">No earnings yet. Complete projects or sessions to see your revenue chart.</p>
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={220}>
+          <AreaChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="gradTotal" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25} />
+                <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="gradFreelance" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="gradConsulting" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.2} />
+                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8', fontWeight: 700 }} axisLine={false} tickLine={false} />
+            <YAxis tickFormatter={v => `₹${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`} tick={{ fontSize: 11, fill: '#94a3b8', fontWeight: 700 }} axisLine={false} tickLine={false} width={55} />
+            <Tooltip
+              formatter={(val, name) => [formatINR(val), name.charAt(0).toUpperCase() + name.slice(1)]}
+              contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12, fontWeight: 700 }}
+            />
+            {showBothLines ? (
+              <>
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, fontWeight: 700 }} />
+                <Area type="monotone" dataKey="freelance" name="Freelance" stroke="#10b981" strokeWidth={2} fill="url(#gradFreelance)" dot={false} />
+                <Area type="monotone" dataKey="consulting" name="Consulting" stroke="#8b5cf6" strokeWidth={2} fill="url(#gradConsulting)" dot={false} />
+              </>
+            ) : (
+              <Area type="monotone" dataKey="total" name="Revenue" stroke="#6366f1" strokeWidth={2.5} fill="url(#gradTotal)" dot={{ r: 3, fill: '#6366f1' }} activeDot={{ r: 5 }} />
+            )}
+          </AreaChart>
+        </ResponsiveContainer>
+      )}
+    </div>
+  )
+}
+
 function BothPanels() {
   return (
     <div className="space-y-6">
@@ -474,6 +556,9 @@ function DashboardHome() {
             })
         }
       </section>
+
+      {/* Revenue chart — freelancer / consultant / both only */}
+      {['freelancer', 'consultant', 'both'].includes(role) && <RevenueChart role={role} />}
 
       {/* Role-specific panels */}
       {role === 'client' && <ClientPanels />}

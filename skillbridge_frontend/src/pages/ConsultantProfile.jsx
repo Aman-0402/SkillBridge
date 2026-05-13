@@ -34,7 +34,7 @@ export default function ConsultantProfile() {
         const availRes = await api.get(
           `/consultations/availability/consultant_availability/?consultant_id=${data.id}`
         )
-        setAvailability(availRes.data || [])
+        setAvailability(Array.isArray(availRes.data) ? availRes.data : availRes.data.results || [])
       } catch {
         // silent — missing profile will show empty state
       } finally {

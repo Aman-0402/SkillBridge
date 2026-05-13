@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated, BasePermission
 from django.contrib.auth import get_user_model
 from .models import Conversation, Message
 from .serializers import ConversationSerializer, ConversationListSerializer, MessageSerializer
-from .analytics import get_client_stats, get_freelancer_stats, get_consultant_stats, get_both_stats, get_admin_stats, get_user_growth
+from .analytics import get_client_stats, get_freelancer_stats, get_consultant_stats, get_both_stats, get_admin_stats, get_user_growth, get_user_revenue_chart
 from projects.models import Project, Proposal
 from jobs.models import Job
 from consultations.models import ConsultationSession
@@ -118,6 +118,14 @@ class AnalyticsViewSet(viewsets.ViewSet):
             'role': user.role,
             'stats': stats
         })
+
+    @action(detail=False, methods=['get'])
+    def my_revenue_chart(self, request):
+        user = request.user
+        if user.role not in ('freelancer', 'consultant', 'both'):
+            return Response({'detail': 'Not applicable for this role.'}, status=status.HTTP_403_FORBIDDEN)
+        data = get_user_revenue_chart(user)
+        return Response(data)
 
     @action(detail=False, methods=['get'])
     def admin_stats(self, request):
