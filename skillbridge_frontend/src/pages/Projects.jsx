@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { FaFolderPlus, FaFolderOpen, FaMagnifyingGlass } from 'react-icons/fa6'
+import { FaFolderPlus, FaFolderOpen, FaMagnifyingGlass, FaFileLines } from 'react-icons/fa6'
 import api from '../services/api'
 import { useAuth } from '../hooks/useAuth'
 
@@ -143,7 +143,16 @@ export default function Projects() {
                   <span>₹{Number(project.budget).toLocaleString('en-IN')} · {project.budget_type}</span>
                   {project.category && <span>📁 {project.category}</span>}
                   {project.duration && <span>⏱ {project.duration}</span>}
-                  <span>{project.proposal_count ?? 0} proposal{project.proposal_count !== 1 ? 's' : ''}</span>
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-black ${
+                    (project.proposal_count ?? 0) === 0
+                      ? 'bg-slate-100 text-slate-400'
+                      : (project.proposal_count ?? 0) >= 10
+                        ? 'bg-rose-100 text-rose-600'
+                        : 'bg-indigo-100 text-indigo-600'
+                  }`}>
+                    <FaFileLines className="text-[9px]" />
+                    {project.proposal_count ?? 0} proposal{project.proposal_count !== 1 ? 's' : ''}
+                  </span>
                   {project.client?.username && <span>by {project.client.username}</span>}
                 </div>
               </article>
