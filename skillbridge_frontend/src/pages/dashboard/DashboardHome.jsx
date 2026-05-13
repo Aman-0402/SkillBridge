@@ -39,6 +39,15 @@ const ROLE_CONFIG = {
       { label: 'Browse Projects', to: '/projects', icon: FaMagnifyingGlass, primary: false },
     ],
   },
+  both: {
+    badge: 'Freelancer + Consultant', badgeColor: 'bg-purple-500/20 text-purple-300 ring-1 ring-purple-500/30',
+    icon: FaUserTie, headline: (n) => `Welcome back, ${n}!`,
+    sub: 'Your combined workspace — bid on projects and accept consulting sessions.',
+    actions: [
+      { label: 'Browse Projects', to: '/projects', icon: FaMagnifyingGlass, primary: true },
+      { label: 'My Sessions', to: '/manage-availability', icon: FaCalendarCheck, primary: false },
+    ],
+  },
   admin: {
     badge: 'Admin', badgeColor: 'bg-rose-500/20 text-rose-300 ring-1 ring-rose-500/30',
     icon: FaShieldHalved, headline: (n) => `Welcome, ${n}!`,
@@ -74,6 +83,12 @@ function buildStatCards(role, stats) {
     { label: 'Completed', value: stats.completed_sessions ?? 0, icon: FaCircleCheck, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: `${stats.confirmed_sessions ?? 0} confirmed` },
     { label: 'Total Earned', value: formatCurrency(stats.total_earned), icon: FaIndianRupeeSign, color: 'text-indigo-600', bg: 'bg-indigo-50', trend: `Avg ₹${Number(stats.avg_session_cost ?? 0).toLocaleString('en-IN')} / session` },
     { label: 'Total Clients', value: stats.total_clients ?? 0, icon: FaUser, color: 'text-amber-600', bg: 'bg-amber-50', trend: `${stats.pending_sessions ?? 0} pending` },
+  ]
+  if (role === 'both') return [
+    { label: 'Total Proposals', value: stats.total_proposals ?? 0, icon: FaFolderOpen, color: 'text-blue-600', bg: 'bg-blue-50', trend: `${stats.proposals_this_month ?? 0} this month` },
+    { label: 'Total Sessions', value: stats.total_sessions ?? 0, icon: FaCalendarCheck, color: 'text-purple-600', bg: 'bg-purple-50', trend: `${stats.sessions_this_month ?? 0} this month` },
+    { label: 'Total Earned', value: formatCurrency(stats.total_earned), icon: FaIndianRupeeSign, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: `Freelance + Consulting` },
+    { label: 'Total Clients', value: stats.total_clients ?? 0, icon: FaUser, color: 'text-amber-600', bg: 'bg-amber-50', trend: `${stats.success_rate ?? 0}% proposal success` },
   ]
   return [
     { label: 'Total Users', value: stats.total_users ?? 0, icon: FaUser, color: 'text-blue-600', bg: 'bg-blue-50', trend: `${stats.clients ?? 0} clients · ${stats.freelancers ?? 0} freelancers` },
@@ -356,6 +371,21 @@ function ConsultantPanels() {
   )
 }
 
+function BothPanels() {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-black text-purple-700">Freelance Work</span>
+      </div>
+      <FreelancerPanels />
+      <div className="flex items-center gap-3">
+        <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">Consulting</span>
+      </div>
+      <ConsultantPanels />
+    </div>
+  )
+}
+
 function AdminPanels({ stats }) {
   return (
     <section className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
@@ -447,8 +477,9 @@ function DashboardHome() {
 
       {/* Role-specific panels */}
       {role === 'client' && <ClientPanels />}
-      {(role === 'freelancer') && <FreelancerPanels />}
+      {role === 'freelancer' && <FreelancerPanels />}
       {role === 'consultant' && <ConsultantPanels />}
+      {role === 'both' && <BothPanels />}
       {role === 'admin' && <AdminPanels stats={stats} />}
     </div>
   )

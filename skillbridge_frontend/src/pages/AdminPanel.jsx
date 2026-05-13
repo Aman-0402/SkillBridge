@@ -182,6 +182,22 @@ export default function AdminPanel() {
     }
   }
 
+  const handleTogglePremium = async (userId, currentStatus) => {
+    try {
+      const res = await api.post('/chat/admin/toggle_premium/', { user_id: userId })
+      setData(prev => prev.map(u => u.id === userId ? { ...u, is_premium: res.data.is_premium } : u))
+      Swal.fire({
+        icon: 'success',
+        title: res.data.is_premium ? '⭐ Premium Granted!' : 'Premium Revoked',
+        text: res.data.is_premium ? 'User can now switch to Both role.' : 'Premium access removed.',
+        timer: 1800,
+        showConfirmButton: false,
+      })
+    } catch {
+      Swal.fire({ icon: 'error', title: 'Failed', text: 'Could not toggle premium.' })
+    }
+  }
+
   const handleToggleFeatured = async (userId, currentStatus) => {
     try {
       const res = await api.post(`/auth/toggle-featured/${userId}/`)
@@ -230,7 +246,7 @@ export default function AdminPanel() {
     if (loading) return <div className="text-center py-8">Loading...</div>
 
     const columns = {
-      users: ['username', 'email', 'role', 'is_featured', 'is_staff', 'date_joined'],
+      users: ['username', 'email', 'role', 'is_premium', 'is_featured', 'is_staff', 'date_joined'],
       projects: ['title', 'client', 'budget', 'status', 'created_at'],
       proposals: ['project', 'freelancer', 'bid_amount', 'status', 'created_at'],
       payments: ['project', 'freelancer', 'amount', 'status', 'created_at'],
@@ -264,12 +280,16 @@ export default function AdminPanel() {
                       <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${item.is_featured ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
                         {item.is_featured ? '⭐ Featured' : 'No'}
                       </span>
+                    ) : col === 'is_premium' ? (
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${item.is_premium ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-500'}`}>
+                        {item.is_premium ? '⭐ Premium' : 'Free'}
+                      </span>
                     ) : typeof item[col] === 'object' ? JSON.stringify(item[col]) : String(item[col] || '-')}
                   </td>
                 ))}
                 <td className="px-4 py-2">
-                  <div className="flex items-center gap-2">
-                    {activeTab === 'users' && ['consultant', 'freelancer'].includes(item.role) && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {activeTab === 'users' && ['consultant', 'freelancer', 'both'].includes(item.role) && (
                       <button
                         onClick={() => handleToggleFeatured(item.id, item.is_featured)}
                         className={`px-3 py-1 rounded text-xs font-bold transition ${
@@ -279,6 +299,18 @@ export default function AdminPanel() {
                         }`}
                       >
                         {item.is_featured ? '★ Unfeature' : '☆ Feature'}
+                      </button>
+                    )}
+                    {activeTab === 'users' && item.role !== 'admin' && (
+                      <button
+                        onClick={() => handleTogglePremium(item.id, item.is_premium)}
+                        className={`px-3 py-1 rounded text-xs font-bold transition ${
+                          item.is_premium
+                            ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                            : 'bg-slate-100 text-slate-600 hover:bg-purple-100 hover:text-purple-700'
+                        }`}
+                      >
+                        {item.is_premium ? '⭐ Revoke Premium' : '+ Premium'}
                       </button>
                     )}
                     <button

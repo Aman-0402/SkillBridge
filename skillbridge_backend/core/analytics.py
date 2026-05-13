@@ -82,6 +82,29 @@ def get_consultant_stats(user):
         'total_clients': sessions.values('client').distinct().count(),
     }
 
+def get_both_stats(user):
+    """Get merged statistics for users with both freelancer + consultant role"""
+    f = get_freelancer_stats(user)
+    c = get_consultant_stats(user)
+    return {
+        'total_proposals': f['total_proposals'],
+        'accepted_proposals': f['accepted_proposals'],
+        'pending_proposals': f['pending_proposals'],
+        'freelancer_earned': f['total_earned'],
+        'completed_projects': f['completed_projects'],
+        'success_rate': f['success_rate'],
+        'proposals_this_month': f['proposals_this_month'],
+        'total_sessions': c['total_sessions'],
+        'completed_sessions': c['completed_sessions'],
+        'confirmed_sessions': c['confirmed_sessions'],
+        'pending_sessions': c['pending_sessions'],
+        'consultant_earned': c['total_earned'],
+        'sessions_this_month': c['sessions_this_month'],
+        'avg_session_cost': c['avg_session_cost'],
+        'total_clients': c['total_clients'],
+        'total_earned': float(f['total_earned'] or 0) + float(c['total_earned'] or 0),
+    }
+
 def get_admin_stats():
     """Get statistics for admin/platform"""
     return {

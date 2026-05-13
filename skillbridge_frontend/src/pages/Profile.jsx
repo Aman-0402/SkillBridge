@@ -255,6 +255,8 @@ export default function Profile() {
   const [pwData, setPwData] = useState({ old_password: '', new_password: '', confirm_password: '' })
   const [showOld, setShowOld] = useState(false)
   const [showNew, setShowNew] = useState(false)
+  const [roleChoice, setRoleChoice] = useState(null)
+  const [showPremiumModal, setShowPremiumModal] = useState(false)
 
   useEffect(() => { fetchProfile() }, [])
 
@@ -269,6 +271,7 @@ export default function Profile() {
         timezone: res.data.timezone || 'Asia/Kolkata',
         is_online: res.data.is_online || false,
       })
+      setRoleChoice(res.data.role)
       if (res.data.profile_image) setImagePreview(res.data.profile_image)
     } catch {
       Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to load profile.' })
@@ -290,12 +293,17 @@ export default function Profile() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (roleChoice === 'both' && !profile.is_premium) {
+      setShowPremiumModal(true)
+      return
+    }
     try {
       const fd = new FormData()
       fd.append('first_name', formData.first_name)
       fd.append('last_name', formData.last_name)
       if (formData.timezone) fd.append('timezone', formData.timezone)
       fd.append('is_online', formData.is_online ? 'true' : 'false')
+      if (roleChoice && roleChoice !== profile.role) fd.append('role', roleChoice)
       if (profileImage) fd.append('profile_image', profileImage)
       const res = await api.put('/auth/profile/', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
       setProfile(res.data)
@@ -387,9 +395,11 @@ export default function Profile() {
               <span className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-black capitalize ${
                 profile.role === 'admin' ? 'bg-rose-100 text-rose-700' :
                 profile.role === 'client' ? 'bg-blue-100 text-blue-700' :
+                profile.role === 'both' ? 'bg-purple-100 text-purple-700' :
                 'bg-emerald-100 text-emerald-700'
               }`}>
-                {profile.role}
+                {profile.role === 'both' ? 'Freelancer + Consultant' : profile.role}
+                {profile.is_premium && <span className="ml-1">⭐</span>}
               </span>
             </div>
 
@@ -463,7 +473,7 @@ export default function Profile() {
                     />
                   </div>
                 </div>
-                {['consultant', 'freelancer'].includes(user?.role) && (
+                {['consultant', 'freelancer', 'both'].includes(user?.role) && (
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Timezone</label>
@@ -496,6 +506,37 @@ export default function Profile() {
                     </div>
                   </div>
                 )}
+                {user?.role !== 'admin' && user?.role !== 'client' && (
+                  <div>
+                    <label className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-600">Your Role</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { value: 'freelancer', label: 'Freelancer', color: 'emerald' },
+                        { value: 'consultant', label: 'Consultant', color: 'blue' },
+                        { value: 'both', label: 'Both ⭐', color: 'purple', premium: true },
+                      ].map(opt => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => {
+                            if (opt.premium && !profile.is_premium) { setShowPremiumModal(true); return }
+                            setRoleChoice(opt.value)
+                          }}
+                          className={`rounded-xl border px-3 py-2.5 text-xs font-black transition ${
+                            roleChoice === opt.value
+                              ? opt.value === 'both' ? 'border-purple-400 bg-purple-100 text-purple-800'
+                                : opt.value === 'consultant' ? 'border-blue-400 bg-blue-100 text-blue-800'
+                                : 'border-emerald-400 bg-emerald-100 text-emerald-800'
+                              : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                          } ${opt.premium && !profile.is_premium ? 'opacity-60' : ''}`}
+                        >
+                          {opt.label}
+                          {opt.premium && !profile.is_premium && <span className="ml-1 text-[9px] text-purple-400">Premium</span>}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div className="flex gap-3 pt-2">
                   <button type="submit" className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-black text-white hover:bg-blue-500">
                     Save Changes
@@ -524,8 +565,8 @@ export default function Profile() {
             )}
           </div>
 
-          {/* Expertise tags — consultants & freelancers only */}
-          {['consultant', 'freelancer'].includes(user?.role) && <ExpertiseTagsSection />}
+          {/* Expertise tags — consultants, freelancers & both */}
+          {['consultant', 'freelancer', 'both'].includes(user?.role) && <ExpertiseTagsSection />}
 
           {/* KYC Section — hidden for admin (they approve KYC, don't submit it) */}
           {user?.role !== 'admin' && <KYCSection profile={profile} onRefresh={fetchProfile} />}
@@ -552,6 +593,28 @@ export default function Profile() {
           </div>
         </div>
       </div>
+
+      {/* ── Premium Upgrade Modal ── */}
+      {showPremiumModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl border border-purple-200 bg-white p-8 shadow-2xl text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-100 text-3xl">⭐</div>
+            <h3 className="text-xl font-black text-slate-950">Premium Required</h3>
+            <p className="mt-3 text-sm text-slate-500">
+              The <strong>Both (Freelancer + Consultant)</strong> role is a Premium feature. It lets you bid on projects <em>and</em> accept consulting sessions from the same account.
+            </p>
+            <p className="mt-4 rounded-xl bg-purple-50 px-4 py-3 text-sm font-semibold text-purple-700">
+              Contact an admin to upgrade your account to Premium.
+            </p>
+            <button
+              onClick={() => setShowPremiumModal(false)}
+              className="mt-6 w-full rounded-xl bg-purple-600 py-2.5 text-sm font-black text-white hover:bg-purple-500"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Change Password Modal ── */}
       {showPwModal && (

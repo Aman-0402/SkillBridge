@@ -16,7 +16,7 @@ class ExperienceSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'bio', 'profile_image', 'hourly_rate', 'is_verified', 'is_featured', 'is_staff', 'identity', 'working_industry', 'state', 'kyc_status']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'bio', 'profile_image', 'hourly_rate', 'is_verified', 'is_featured', 'is_premium', 'is_staff', 'identity', 'working_industry', 'state', 'kyc_status']
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -78,12 +78,23 @@ class ProfileSerializer(serializers.ModelSerializer):
             'location', 'portfolio_url',
             'kyc_status', 'kyc_document_type', 'kyc_document_number',
             'kyc_submitted_at', 'kyc_rejection_reason',
-            'timezone', 'is_online',
+            'timezone', 'is_online', 'is_premium',
         ]
         read_only_fields = [
-            'id', 'username', 'email', 'role', 'is_verified', 'is_staff',
+            'id', 'username', 'email', 'is_verified', 'is_staff',
             'kyc_status', 'kyc_submitted_at', 'kyc_rejection_reason',
+            'is_premium',
         ]
+
+    def validate_role(self, value):
+        instance = self.instance
+        if value == 'admin':
+            raise serializers.ValidationError("Cannot set admin role via profile.")
+        if instance and instance.role == 'admin':
+            raise serializers.ValidationError("Cannot change admin role.")
+        if value == 'both' and instance and not instance.is_premium:
+            raise serializers.ValidationError("Premium required to enable Both role.")
+        return value
 
 
 class ExpertiseTagSerializer(serializers.ModelSerializer):

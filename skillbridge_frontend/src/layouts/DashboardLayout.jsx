@@ -39,6 +39,16 @@ const SIDEBAR_LINKS = {
     { label: 'Chat',         to: '/chat',                icon: FaMessage },
     { label: 'Profile',      to: '/profile',             icon: FaUser },
   ],
+  both: [
+    { label: 'Overview',     to: '/dashboard',           icon: FaTableColumns },
+    { label: 'Projects',     to: '/projects',            icon: FaFolderOpen },
+    { label: 'Jobs',         to: '/jobs',                icon: FaBriefcase },
+    { label: 'Sessions',     to: '/manage-availability', icon: FaCalendarCheck },
+    { label: 'Consultants',  to: '/consultants',         icon: FaUserTie },
+    { label: 'Earnings',     to: '/earnings',            icon: FaClockRotateLeft },
+    { label: 'Chat',         to: '/chat',                icon: FaMessage },
+    { label: 'Profile',      to: '/profile',             icon: FaUser },
+  ],
   admin: [
     { label: 'Overview',       to: '/dashboard',         icon: FaTableColumns },
     { label: 'Analytics',      to: '/admin/dashboard',   icon: FaChartPie },

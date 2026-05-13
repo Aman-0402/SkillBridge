@@ -6,10 +6,12 @@ class User(AbstractUser):
         ('client', 'Client'),
         ('freelancer', 'Freelancer'),
         ('consultant', 'Consultant'),
+        ('both', 'Both (Freelancer + Consultant)'),
         ('admin', 'Admin'),
     )
 
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='freelancer')
+    is_premium = models.BooleanField(default=False)
     bio = models.TextField(blank=True, null=True)
     profile_image = models.ImageField(upload_to='profiles/', blank=True, null=True)
     hourly_rate = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)

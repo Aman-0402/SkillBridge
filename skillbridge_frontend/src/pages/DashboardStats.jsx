@@ -242,6 +242,18 @@ export default function DashboardStats() {
         {user?.role === 'client' && renderClientDashboard()}
         {user?.role === 'freelancer' && renderFreelancerDashboard()}
         {user?.role === 'consultant' && renderConsultantDashboard()}
+        {user?.role === 'both' && (
+          <div className="space-y-8">
+            <div>
+              <h3 className="mb-4 text-lg font-bold text-purple-700">Freelance Stats</h3>
+              {renderFreelancerDashboard()}
+            </div>
+            <div>
+              <h3 className="mb-4 text-lg font-bold text-emerald-700">Consulting Stats</h3>
+              {renderConsultantDashboard()}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

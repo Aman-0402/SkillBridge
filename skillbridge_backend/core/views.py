@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated, BasePermission
 from django.contrib.auth import get_user_model
 from .models import Conversation, Message
 from .serializers import ConversationSerializer, ConversationListSerializer, MessageSerializer
-from .analytics import get_client_stats, get_freelancer_stats, get_consultant_stats, get_admin_stats, get_user_growth
+from .analytics import get_client_stats, get_freelancer_stats, get_consultant_stats, get_both_stats, get_admin_stats, get_user_growth
 from projects.models import Project, Proposal
 from jobs.models import Job
 from consultations.models import ConsultationSession
@@ -109,6 +109,8 @@ class AnalyticsViewSet(viewsets.ViewSet):
             stats = get_freelancer_stats(user)
         elif user.role == 'consultant':
             stats = get_consultant_stats(user)
+        elif user.role == 'both':
+            stats = get_both_stats(user)
         else:
             stats = get_admin_stats()
 
@@ -365,3 +367,16 @@ class AdminViewSet(viewsets.ViewSet):
             return Response({'detail': 'Payment deleted'}, status=status.HTTP_204_NO_CONTENT)
         except Payment.DoesNotExist:
             return Response({'detail': 'Payment not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=False, methods=['post'])
+    def toggle_premium(self, request):
+        user_id = request.data.get('user_id')
+        if not user_id:
+            return Response({'detail': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            user = User.objects.get(id=user_id)
+            user.is_premium = not user.is_premium
+            user.save(update_fields=['is_premium'])
+            return Response({'detail': f"Premium {'granted' if user.is_premium else 'revoked'}.", 'is_premium': user.is_premium})
+        except User.DoesNotExist:
+            return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
