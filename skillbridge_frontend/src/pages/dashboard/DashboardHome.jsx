@@ -4,7 +4,7 @@ import {
   FaCalendarCheck, FaFolderPlus, FaMagnifyingGlass,
   FaUserTie, FaUser, FaShieldHalved, FaFolderOpen,
   FaIndianRupeeSign, FaChartLine, FaCircleCheck, FaHourglass,
-  FaArrowRight, FaChartPie,
+  FaArrowRight, FaChartPie, FaBriefcase, FaFileLines,
 } from 'react-icons/fa6'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -489,6 +489,77 @@ function AdminPanels({ stats }) {
   )
 }
 
+/* ─── Quick actions ───────────────────────────────────────── */
+const QUICK_ACTIONS = {
+  client: [
+    { label: 'Post Project',       to: '/create-project',      icon: FaFolderPlus,      primary: true },
+    { label: 'Browse Consultants', to: '/consultants',         icon: FaUserTie,          primary: false },
+    { label: 'Appointments',       to: '/manage-availability', icon: FaCalendarCheck,    primary: false },
+    { label: 'Payments',           to: '/earnings',            icon: FaIndianRupeeSign,  primary: false },
+  ],
+  freelancer: [
+    { label: 'Browse Projects',    to: '/projects',            icon: FaFolderOpen,       primary: true },
+    { label: 'Browse Jobs',        to: '/jobs',                icon: FaBriefcase,        primary: false },
+    { label: 'Templates',          to: '/proposal-templates',  icon: FaFileLines,        primary: false },
+    { label: 'Availability',       to: '/manage-availability', icon: FaCalendarCheck,    primary: false },
+  ],
+  consultant: [
+    { label: 'Manage Sessions',    to: '/manage-availability', icon: FaCalendarCheck,    primary: true },
+    { label: 'Browse Projects',    to: '/projects',            icon: FaFolderOpen,       primary: false },
+    { label: 'Templates',          to: '/proposal-templates',  icon: FaFileLines,        primary: false },
+    { label: 'Earnings',           to: '/earnings',            icon: FaIndianRupeeSign,  primary: false },
+  ],
+  both: [
+    { label: 'Browse Projects',    to: '/projects',            icon: FaFolderOpen,       primary: true },
+    { label: 'Browse Jobs',        to: '/jobs',                icon: FaBriefcase,        primary: false },
+    { label: 'Manage Sessions',    to: '/manage-availability', icon: FaCalendarCheck,    primary: false },
+    { label: 'Templates',          to: '/proposal-templates',  icon: FaFileLines,        primary: false },
+  ],
+  admin: [
+    { label: 'Analytics',          to: '/admin/dashboard',     icon: FaChartPie,         primary: true },
+    { label: 'Admin Panel',        to: '/admin/panel',         icon: FaShieldHalved,     primary: false },
+    { label: 'Projects',           to: '/projects',            icon: FaFolderOpen,       primary: false },
+    { label: 'Consultants',        to: '/consultants',         icon: FaUserTie,          primary: false },
+  ],
+}
+
+const ROLE_PRIMARY_COLOR = {
+  client: 'bg-blue-600 hover:bg-blue-500',
+  freelancer: 'bg-blue-600 hover:bg-blue-500',
+  consultant: 'bg-blue-600 hover:bg-blue-500',
+  both: 'bg-purple-600 hover:bg-purple-500',
+  admin: 'bg-rose-600 hover:bg-rose-500',
+}
+
+function QuickActions({ role }) {
+  const actions = QUICK_ACTIONS[role] || QUICK_ACTIONS.client
+  const primaryColor = ROLE_PRIMARY_COLOR[role] || ROLE_PRIMARY_COLOR.client
+  return (
+    <section>
+      <p className="mb-3 text-xs font-black uppercase tracking-[0.15em] text-slate-400">Quick Actions</p>
+      <div className="flex flex-wrap gap-2">
+        {actions.map((action) => {
+          const Icon = action.icon
+          return (
+            <Link
+              key={action.to + action.label}
+              to={action.to}
+              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-black transition ${
+                action.primary
+                  ? `${primaryColor} text-white shadow-sm`
+                  : 'border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+              }`}
+            >
+              <Icon className="text-xs" />
+              {action.label}
+            </Link>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
 /* ─── Main component ──────────────────────────────────────── */
 function DashboardHome() {
   const { user } = useAuth()
@@ -556,6 +627,9 @@ function DashboardHome() {
             })
         }
       </section>
+
+      {/* Quick actions */}
+      <QuickActions role={role} />
 
       {/* Revenue chart — freelancer / consultant / both only */}
       {['freelancer', 'consultant', 'both'].includes(role) && <RevenueChart role={role} />}
