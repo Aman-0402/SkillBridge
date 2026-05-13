@@ -15,10 +15,18 @@ export default function ProjectDetail() {
     cover_letter: '',
     timeline: '',
   })
+  const [templates, setTemplates] = useState([])
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false)
 
   useEffect(() => {
     fetchProject()
   }, [id])
+
+  useEffect(() => {
+    if (showProposalForm && ['freelancer', 'consultant', 'both'].includes(user?.role)) {
+      api.get('/projects/proposal-templates/').then(res => setTemplates(Array.isArray(res.data) ? res.data : res.data.results || [])).catch(() => {})
+    }
+  }, [showProposalForm, user?.role])
 
   const fetchProject = async () => {
     try {
@@ -187,7 +195,39 @@ export default function ProjectDetail() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Cover Letter</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-gray-700">Cover Letter</label>
+                  {templates.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowTemplatePicker(v => !v)}
+                      className="text-xs font-bold text-indigo-600 hover:text-indigo-700"
+                    >
+                      {showTemplatePicker ? '✕ Close' : '📋 Use Template'}
+                    </button>
+                  )}
+                </div>
+
+                {showTemplatePicker && (
+                  <div className="mb-3 rounded-xl border border-indigo-100 bg-indigo-50 p-3 space-y-2">
+                    <p className="text-xs font-black text-indigo-700 uppercase tracking-wide">Your Templates</p>
+                    {templates.map(t => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => {
+                          setProposalData(prev => ({ ...prev, cover_letter: t.content }))
+                          setShowTemplatePicker(false)
+                        }}
+                        className="w-full rounded-lg border border-indigo-200 bg-white px-3 py-2.5 text-left hover:border-indigo-400 hover:bg-indigo-50 transition"
+                      >
+                        <p className="text-sm font-black text-slate-900">{t.title}</p>
+                        <p className="mt-0.5 text-xs text-slate-500 line-clamp-2">{t.content}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 <textarea
                   name="cover_letter"
                   value={proposalData.cover_letter}
@@ -197,6 +237,9 @@ export default function ProjectDetail() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                   placeholder="Explain why you're a good fit for this project..."
                 />
+                <p className="mt-1 text-xs text-slate-400">
+                  Manage templates in <Link to="/proposal-templates" className="font-bold text-indigo-600 hover:underline">Proposal Templates</Link>
+                </p>
               </div>
 
               <div className="flex space-x-4">

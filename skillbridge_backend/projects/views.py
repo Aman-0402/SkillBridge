@@ -2,8 +2,8 @@ from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from .models import Project, Proposal
-from .serializers import ProjectSerializer, ProjectCreateSerializer, ProposalSerializer
+from .models import Project, Proposal, ProposalTemplate
+from .serializers import ProjectSerializer, ProjectCreateSerializer, ProposalSerializer, ProposalTemplateSerializer
 
 class ProjectViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny]
@@ -93,3 +93,14 @@ class ProposalViewSet(viewsets.ModelViewSet):
         proposal.status = 'withdrawn'
         proposal.save()
         return Response({'detail': 'Proposal withdrawn'})
+
+
+class ProposalTemplateViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ProposalTemplateSerializer
+
+    def get_queryset(self):
+        return ProposalTemplate.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)

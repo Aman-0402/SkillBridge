@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Project, Proposal
+from .models import Project, Proposal, ProposalTemplate
 from users.serializers import UserSerializer
 
 class ProposalSerializer(serializers.ModelSerializer):
@@ -29,3 +29,10 @@ class ProjectCreateSerializer(serializers.ModelSerializer):
         model = Project
         fields = ['id', 'title', 'description', 'budget', 'budget_type', 'category', 'skills_required', 'duration', 'deadline', 'created_at']
         read_only_fields = ['id', 'created_at']
+
+
+class ProposalTemplateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProposalTemplate
+        fields = ['id', 'title', 'content', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']

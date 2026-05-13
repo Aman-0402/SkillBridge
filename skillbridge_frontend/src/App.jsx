@@ -32,6 +32,7 @@ import Earnings from './pages/Earnings'
 import DashboardStats from './pages/DashboardStats'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminPanel from './pages/AdminPanel'
+import ProposalTemplates from './pages/ProposalTemplates'
 
 function App() {
   return (
@@ -74,6 +75,7 @@ function App() {
             <Route path="/payment/:proposalId" element={<Payment />} />
             <Route path="/earnings" element={<Earnings />} />
             <Route path="/stats" element={<DashboardStats />} />
+            <Route path="/proposal-templates" element={<ProposalTemplates />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/admin/panel" element={<AdminPanel />} />
           </Route>
