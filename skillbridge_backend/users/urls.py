@@ -6,7 +6,7 @@ from .views import (
     SkillViewSet, ExperienceViewSet, ExpertiseTagViewSet, PublicProfileView,
     featured_consultants, toggle_featured,
     kyc_submit, kyc_pending_list, kyc_approve, kyc_reject,
-    clients_list,
+    clients_list, freelancers_list,
 )
 
 router = DefaultRouter()
@@ -28,5 +28,6 @@ urlpatterns = [
     path('kyc/approve/<int:user_id>/', kyc_approve, name='kyc_approve'),
     path('kyc/reject/<int:user_id>/', kyc_reject, name='kyc_reject'),
     path('clients/', clients_list, name='clients_list'),
+    path('freelancers/', freelancers_list, name='freelancers_list'),
     path('', include(router.urls)),
 ]

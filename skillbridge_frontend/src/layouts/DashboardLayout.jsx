@@ -105,13 +105,14 @@ function NotificationPanel({ onClose }) {
 
 const SIDEBAR_LINKS = {
   client: [
-    { label: 'Overview',     to: '/dashboard',           icon: FaTableColumns },
-    { label: 'Consultants',  to: '/consultants',         icon: FaUserTie },
-    { label: 'Appointments', to: '/manage-availability', icon: FaCalendarCheck },
-    { label: 'Projects',     to: '/projects',            icon: FaFolderOpen },
-    { label: 'Chat',         to: '/chat',                icon: FaMessage },
-    { label: 'Payments',     to: '/earnings',            icon: FaIndianRupeeSign },
-    { label: 'Profile',      to: '/profile',             icon: FaUser },
+    { label: 'Overview',      to: '/dashboard',           icon: FaTableColumns },
+    { label: 'Consultants',   to: '/consultants',         icon: FaUserTie },
+    { label: 'Freelancers',   to: '/freelancers',         icon: FaUsers },
+    { label: 'Appointments',  to: '/manage-availability', icon: FaCalendarCheck },
+    { label: 'Projects',      to: '/projects',            icon: FaFolderOpen },
+    { label: 'Chat',          to: '/chat',                icon: FaMessage },
+    { label: 'Payments',      to: '/earnings',            icon: FaIndianRupeeSign },
+    { label: 'Profile',       to: '/profile',             icon: FaUser },
   ],
   freelancer: [
     { label: 'Overview',     to: '/dashboard',            icon: FaTableColumns },

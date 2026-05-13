@@ -61,7 +61,7 @@ class ConsultationSessionViewSet(viewsets.ModelViewSet):
         from users.serializers import ConsultantListSerializer
 
         User = get_user_model()
-        qs = User.objects.filter(role='consultant').prefetch_related(
+        qs = User.objects.filter(role__in=['consultant', 'both']).prefetch_related(
             'skills', 'expertise_tags', 'consultation_availability',
             'consultation_sessions_as_consultant',
         )

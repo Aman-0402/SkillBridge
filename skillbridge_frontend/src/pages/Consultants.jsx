@@ -227,6 +227,12 @@ export default function Consultants() {
                         )}
                       </p>
                       <p className="text-xs text-slate-500">@{consultant.username}</p>
+                      {/* Role badge */}
+                      {consultant.role === 'both' && (
+                        <span className="mt-0.5 inline-flex rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-700">
+                          Freelancer + Consultant
+                        </span>
+                      )}
                       {/* Rating */}
                       {consultant.avg_rating && (
                         <div className="mt-0.5 flex items-center gap-1">

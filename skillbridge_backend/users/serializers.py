@@ -148,9 +148,45 @@ class ConsultantListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'username', 'first_name', 'last_name', 'bio',
             'profile_image', 'hourly_rate', 'is_verified', 'is_featured',
-            'kyc_status', 'is_online', 'timezone', 'location',
+            'kyc_status', 'is_online', 'timezone', 'location', 'role',
             'working_industry', 'skills', 'expertise_tags',
             'avg_rating', 'total_sessions', 'next_available_slot',
+        ]
+
+
+class FreelancerListSerializer(serializers.ModelSerializer):
+    skills = serializers.SerializerMethodField()
+    expertise_tags = serializers.SerializerMethodField()
+    completed_projects = serializers.SerializerMethodField()
+    accepted_proposals = serializers.SerializerMethodField()
+    avg_rating = serializers.SerializerMethodField()
+
+    def get_skills(self, obj):
+        return [s.name for s in obj.skills.all()]
+
+    def get_expertise_tags(self, obj):
+        return [t.tag for t in obj.expertise_tags.all()]
+
+    def get_completed_projects(self, obj):
+        return obj.proposals.filter(status='accepted').count()
+
+    def get_accepted_proposals(self, obj):
+        return obj.proposals.filter(status='accepted').count()
+
+    def get_avg_rating(self, obj):
+        from django.db.models import Avg
+        from consultations.models import Review
+        result = Review.objects.filter(session__consultant=obj).aggregate(avg=Avg('rating'))
+        return round(result['avg'], 1) if result['avg'] else None
+
+    class Meta:
+        model = User
+        fields = [
+            'id', 'username', 'first_name', 'last_name', 'bio',
+            'profile_image', 'hourly_rate', 'is_verified', 'is_featured',
+            'kyc_status', 'is_online', 'location', 'role',
+            'working_industry', 'skills', 'expertise_tags',
+            'completed_projects', 'accepted_proposals', 'avg_rating',
         ]
 
 

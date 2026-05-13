@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import action, api_view, permission_classes
 from .models import User, Skill, Experience, ExpertiseTag
-from .serializers import RegisterSerializer, ProfileSerializer, SkillSerializer, ExperienceSerializer, UserSerializer, KYCSubmitSerializer, ExpertiseTagSerializer
+from .serializers import RegisterSerializer, ProfileSerializer, SkillSerializer, ExperienceSerializer, UserSerializer, KYCSubmitSerializer, ExpertiseTagSerializer, FreelancerListSerializer
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -84,7 +84,7 @@ def featured_consultants(request):
     """Return all consultants/freelancers marked as featured by admin."""
     consultants = User.objects.filter(
         is_featured=True,
-        role__in=['consultant', 'freelancer']
+        role__in=['consultant', 'freelancer', 'both']
     )
     serializer = UserSerializer(consultants, many=True)
     return Response(serializer.data)
@@ -97,7 +97,7 @@ def toggle_featured(request, user_id):
     if not request.user.is_staff:
         return Response({'detail': 'Admin access required.'}, status=status.HTTP_403_FORBIDDEN)
     try:
-        target = User.objects.get(id=user_id, role__in=['consultant', 'freelancer'])
+        target = User.objects.get(id=user_id, role__in=['consultant', 'freelancer', 'both'])
         target.is_featured = not target.is_featured
         target.save()
         return Response({'id': target.id, 'is_featured': target.is_featured})
@@ -234,3 +234,33 @@ def clients_list(request):
             'open_project_count': client.open_project_count,
         })
     return Response(data)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def freelancers_list(request):
+    """List freelancers — role in ('freelancer', 'both')."""
+    from django.db.models import Q
+    search = request.query_params.get('search', '').strip()
+    online = request.query_params.get('online', '')
+
+    qs = User.objects.filter(role__in=['freelancer', 'both']).prefetch_related(
+        'skills', 'expertise_tags',
+    )
+
+    if search:
+        qs = qs.filter(
+            Q(username__icontains=search) |
+            Q(first_name__icontains=search) |
+            Q(last_name__icontains=search) |
+            Q(skills__name__icontains=search) |
+            Q(expertise_tags__tag__icontains=search) |
+            Q(working_industry__icontains=search) |
+            Q(bio__icontains=search)
+        ).distinct()
+
+    if online == 'true':
+        qs = qs.filter(is_online=True)
+
+    serializer = FreelancerListSerializer(qs, many=True)
+    return Response(serializer.data)
