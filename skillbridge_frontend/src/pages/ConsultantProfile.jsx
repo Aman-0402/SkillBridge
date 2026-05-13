@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { FaCircleCheck, FaStar, FaCalendarCheck, FaClock, FaGlobe } from 'react-icons/fa6'
 import api from '../services/api'
 import { useAuth } from '../hooks/useAuth'
+
+const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 
 export default function ConsultantProfile() {
   const { username } = useParams()
@@ -22,29 +25,24 @@ export default function ConsultantProfile() {
   })
 
   useEffect(() => {
-    fetchConsultantProfile()
-    fetchAvailability()
+    const load = async () => {
+      setLoading(true)
+      try {
+        const profileRes = await api.get(`/auth/profile/${username}/`)
+        const data = profileRes.data
+        setConsultant(data)
+        const availRes = await api.get(
+          `/consultations/availability/consultant_availability/?consultant_id=${data.id}`
+        )
+        setAvailability(availRes.data || [])
+      } catch {
+        // silent — missing profile will show empty state
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
   }, [username])
-
-  const fetchConsultantProfile = async () => {
-    try {
-      const response = await api.get(`/auth/profile/${username}/`)
-      setConsultant(response.data)
-    } catch (error) {
-      console.error('Failed to fetch consultant profile:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchAvailability = async () => {
-    try {
-      const response = await api.get(`/consultations/availability/consultant_availability/?consultant_id=${consultant?.id}`)
-      setAvailability(response.data || [])
-    } catch (error) {
-      console.error('Failed to fetch availability:', error)
-    }
-  }
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -258,19 +256,61 @@ export default function ConsultantProfile() {
           )}
         </div>
 
-        {availability.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Available Time Slots</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {availability.map(slot => (
-                <div key={slot.id} className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <p className="font-semibold text-gray-900 capitalize">{slot.day_of_week}</p>
-                  <p className="text-sm text-gray-600">{slot.start_time} - {slot.end_time}</p>
-                </div>
-              ))}
-            </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <FaCalendarCheck className="text-blue-500" /> Weekly Availability
+            </h3>
+            {consultant?.timezone && (
+              <span className="flex items-center gap-1.5 text-xs text-slate-500">
+                <FaGlobe className="text-slate-400" /> {consultant.timezone}
+              </span>
+            )}
           </div>
-        )}
+
+          {availability.length === 0 ? (
+            <p className="text-sm text-slate-400">No availability set yet.</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-7">
+              {DAYS.map(day => {
+                const daySlots = availability.filter(s => s.day_of_week === day)
+                const today = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
+                const isToday = day === today
+                return (
+                  <div
+                    key={day}
+                    className={`rounded-xl border p-3 ${
+                      daySlots.length
+                        ? isToday
+                          ? 'border-blue-300 bg-blue-50'
+                          : 'border-emerald-200 bg-emerald-50'
+                        : 'border-slate-100 bg-slate-50'
+                    }`}
+                  >
+                    <p className={`text-xs font-black capitalize mb-2 ${
+                      daySlots.length
+                        ? isToday ? 'text-blue-700' : 'text-emerald-700'
+                        : 'text-slate-400'
+                    }`}>
+                      {day.slice(0, 3).toUpperCase()}
+                      {isToday && <span className="ml-1 text-[9px] text-blue-500">TODAY</span>}
+                    </p>
+                    {daySlots.length === 0 ? (
+                      <p className="text-[10px] text-slate-400">—</p>
+                    ) : (
+                      daySlots.map(s => (
+                        <p key={s.id} className="flex items-center gap-0.5 text-[10px] font-semibold text-emerald-700">
+                          <FaClock className="text-[8px] shrink-0" />
+                          {s.start_time.slice(0, 5)}–{s.end_time.slice(0, 5)}
+                        </p>
+                      ))
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

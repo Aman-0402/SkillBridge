@@ -23,6 +23,7 @@ class ConsultantAvailability(models.Model):
     class Meta:
         unique_together = ('consultant', 'day_of_week', 'start_time', 'end_time')
         ordering = ['day_of_week', 'start_time']
+        indexes = [models.Index(fields=['day_of_week', 'is_available'])]
 
     def __str__(self):
         return f"{self.consultant.username} - {self.day_of_week} {self.start_time}-{self.end_time}"

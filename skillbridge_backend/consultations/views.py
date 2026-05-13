@@ -49,11 +49,43 @@ class ConsultationSessionViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], permission_classes=[AllowAny])
     def available_consultants(self, request):
+        import datetime
         from django.contrib.auth import get_user_model
+        from django.db.models import Q
+        from users.serializers import ConsultantListSerializer
+
         User = get_user_model()
-        consultants = User.objects.filter(role='consultant')
-        from users.serializers import UserSerializer
-        serializer = UserSerializer(consultants, many=True)
+        qs = User.objects.filter(role='consultant').prefetch_related(
+            'skills', 'expertise_tags', 'consultation_availability',
+            'consultation_sessions_as_consultant',
+        )
+
+        search = request.query_params.get('search', '').strip()
+        online = request.query_params.get('online', '')
+        available_today = request.query_params.get('available_today', '')
+
+        if search:
+            qs = qs.filter(
+                Q(username__icontains=search) |
+                Q(first_name__icontains=search) |
+                Q(last_name__icontains=search) |
+                Q(skills__name__icontains=search) |
+                Q(expertise_tags__tag__icontains=search) |
+                Q(working_industry__icontains=search) |
+                Q(bio__icontains=search)
+            ).distinct()
+
+        if online == 'true':
+            qs = qs.filter(is_online=True)
+
+        if available_today == 'true':
+            today = datetime.date.today().strftime('%A').lower()
+            qs = qs.filter(
+                consultation_availability__day_of_week=today,
+                consultation_availability__is_available=True,
+            ).distinct()
+
+        serializer = ConsultantListSerializer(qs, many=True)
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])

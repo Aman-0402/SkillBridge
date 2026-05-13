@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   FaUser, FaEnvelope, FaPhone, FaLocationDot, FaBriefcase,
   FaShieldHalved, FaCircleCheck, FaClock, FaXmark, FaPen,
-  FaKey, FaIdCard, FaEye, FaEyeSlash,
+  FaKey, FaIdCard, FaEye, FaEyeSlash, FaTag, FaPlus,
 } from 'react-icons/fa6'
 import Swal from 'sweetalert2'
 import api from '../services/api'
@@ -23,6 +23,97 @@ const DOC_TYPES = [
   { value: 'driving_license', label: 'Driving License' },
   { value: 'voter_id',        label: 'Voter ID' },
 ]
+
+/* ─── Expertise Tags (consultants/freelancers only) ────── */
+function ExpertiseTagsSection() {
+  const [tags, setTags] = useState([])
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.get('/auth/expertise-tags/')
+      .then(res => setTags(Array.isArray(res.data) ? res.data : res.data.results || []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  const addTag = async () => {
+    const tag = input.trim()
+    if (!tag) return
+    if (tags.some(t => t.tag.toLowerCase() === tag.toLowerCase())) {
+      setInput(''); return
+    }
+    try {
+      const res = await api.post('/auth/expertise-tags/', { tag })
+      setTags(prev => [...prev, res.data])
+      setInput('')
+    } catch (err) {
+      const msg = err.response?.data?.tag?.[0] || err.response?.data?.non_field_errors?.[0] || 'Failed to add tag.'
+      Swal.fire({ icon: 'error', title: 'Error', text: msg, timer: 2000, showConfirmButton: false })
+    }
+  }
+
+  const removeTag = async (id) => {
+    try {
+      await api.delete(`/auth/expertise-tags/${id}/`)
+      setTags(prev => prev.filter(t => t.id !== id))
+    } catch {
+      Swal.fire({ icon: 'error', title: 'Failed to remove tag', timer: 1500, showConfirmButton: false })
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="mb-4 flex items-center gap-2">
+        <FaTag className="text-blue-500" />
+        <p className="font-black text-slate-950">Expertise Tags</p>
+        <span className="ml-auto text-xs text-slate-400">Used for search & discovery</span>
+      </div>
+
+      {loading ? (
+        <div className="flex flex-wrap gap-2">
+          {[80, 100, 64, 90].map(w => (
+            <div key={w} className="h-7 animate-pulse rounded-full bg-slate-100" style={{ width: w }} />
+          ))}
+        </div>
+      ) : (
+        <>
+          <div className="flex flex-wrap gap-2">
+            {tags.map(t => (
+              <span key={t.id} className="flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">
+                {t.tag}
+                <button type="button" onClick={() => removeTag(t.id)} className="text-blue-400 hover:text-rose-500 transition">
+                  <FaXmark />
+                </button>
+              </span>
+            ))}
+            {tags.length === 0 && (
+              <p className="text-sm text-slate-400">No expertise tags yet. Add keywords clients search for.</p>
+            )}
+          </div>
+
+          <div className="mt-4 flex gap-2">
+            <input
+              type="text"
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTag())}
+              placeholder="e.g. Financial Planning, GST, Startup Consulting"
+              className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
+            />
+            <button
+              type="button"
+              onClick={addTag}
+              className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-black text-white hover:bg-blue-500"
+            >
+              <FaPlus /> Add
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
 
 function KYCSection({ profile, onRefresh }) {
   const [showForm, setShowForm] = useState(false)
@@ -172,7 +263,12 @@ export default function Profile() {
     try {
       const res = await api.get('/auth/profile/')
       setProfile(res.data)
-      setFormData({ first_name: res.data.first_name || '', last_name: res.data.last_name || '' })
+      setFormData({
+        first_name: res.data.first_name || '',
+        last_name: res.data.last_name || '',
+        timezone: res.data.timezone || 'Asia/Kolkata',
+        is_online: res.data.is_online || false,
+      })
       if (res.data.profile_image) setImagePreview(res.data.profile_image)
     } catch {
       Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to load profile.' })
@@ -198,6 +294,8 @@ export default function Profile() {
       const fd = new FormData()
       fd.append('first_name', formData.first_name)
       fd.append('last_name', formData.last_name)
+      if (formData.timezone) fd.append('timezone', formData.timezone)
+      fd.append('is_online', formData.is_online ? 'true' : 'false')
       if (profileImage) fd.append('profile_image', profileImage)
       const res = await api.put('/auth/profile/', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
       setProfile(res.data)
@@ -365,6 +463,39 @@ export default function Profile() {
                     />
                   </div>
                 </div>
+                {['consultant', 'freelancer'].includes(user?.role) && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Timezone</label>
+                      <select
+                        value={formData.timezone || 'Asia/Kolkata'}
+                        onChange={e => setFormData(p => ({ ...p, timezone: e.target.value }))}
+                        className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                      >
+                        {[
+                          'Asia/Kolkata', 'Asia/Dubai', 'Asia/Singapore', 'Asia/Tokyo',
+                          'Europe/London', 'Europe/Paris', 'Europe/Berlin',
+                          'America/New_York', 'America/Chicago', 'America/Los_Angeles',
+                          'Australia/Sydney', 'Pacific/Auckland',
+                        ].map(tz => <option key={tz} value={tz}>{tz.replace('_', ' ')}</option>)}
+                      </select>
+                    </div>
+                    <div className="flex items-end pb-1">
+                      <label className="flex cursor-pointer items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={!!formData.is_online}
+                          onChange={e => setFormData(p => ({ ...p, is_online: e.target.checked }))}
+                          className="h-4 w-4 rounded border-slate-300 accent-emerald-500"
+                        />
+                        <div>
+                          <p className="text-sm font-black text-slate-900">Mark as Online</p>
+                          <p className="text-xs text-slate-400">Show green dot on your profile</p>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                )}
                 <div className="flex gap-3 pt-2">
                   <button type="submit" className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-black text-white hover:bg-blue-500">
                     Save Changes
@@ -392,6 +523,9 @@ export default function Profile() {
               </div>
             )}
           </div>
+
+          {/* Expertise tags — consultants & freelancers only */}
+          {['consultant', 'freelancer'].includes(user?.role) && <ExpertiseTagsSection />}
 
           {/* KYC Section — hidden for admin (they approve KYC, don't submit it) */}
           {user?.role !== 'admin' && <KYCSection profile={profile} onRefresh={fetchProfile} />}

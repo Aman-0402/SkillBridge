@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (
     RegisterView, ProfileView, ChangePasswordView,
-    SkillViewSet, ExperienceViewSet, PublicProfileView,
+    SkillViewSet, ExperienceViewSet, ExpertiseTagViewSet, PublicProfileView,
     featured_consultants, toggle_featured,
     kyc_submit, kyc_pending_list, kyc_approve, kyc_reject,
 )
@@ -11,6 +11,7 @@ from .views import (
 router = DefaultRouter()
 router.register(r'skills', SkillViewSet, basename='skill')
 router.register(r'experiences', ExperienceViewSet, basename='experience')
+router.register(r'expertise-tags', ExpertiseTagViewSet, basename='expertise-tag')
 
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),

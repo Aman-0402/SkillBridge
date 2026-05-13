@@ -3,8 +3,8 @@ from rest_framework import generics, status, viewsets
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import action, api_view, permission_classes
-from .models import User, Skill, Experience
-from .serializers import RegisterSerializer, ProfileSerializer, SkillSerializer, ExperienceSerializer, UserSerializer, KYCSubmitSerializer
+from .models import User, Skill, Experience, ExpertiseTag
+from .serializers import RegisterSerializer, ProfileSerializer, SkillSerializer, ExperienceSerializer, UserSerializer, KYCSubmitSerializer, ExpertiseTagSerializer
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -49,6 +49,17 @@ class SkillViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+class ExpertiseTagViewSet(viewsets.ModelViewSet):
+    serializer_class = ExpertiseTagSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return ExpertiseTag.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
 
 class ExperienceViewSet(viewsets.ModelViewSet):
     serializer_class = ExperienceSerializer

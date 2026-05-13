@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Skill, Experience
+from .models import User, Skill, Experience, ExpertiseTag
 
 class SkillSerializer(serializers.ModelSerializer):
     class Meta:
@@ -78,10 +78,68 @@ class ProfileSerializer(serializers.ModelSerializer):
             'location', 'portfolio_url',
             'kyc_status', 'kyc_document_type', 'kyc_document_number',
             'kyc_submitted_at', 'kyc_rejection_reason',
+            'timezone', 'is_online',
         ]
         read_only_fields = [
             'id', 'username', 'email', 'role', 'is_verified', 'is_staff',
             'kyc_status', 'kyc_submitted_at', 'kyc_rejection_reason',
+        ]
+
+
+class ExpertiseTagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExpertiseTag
+        fields = ['id', 'tag']
+        read_only_fields = ['id']
+
+
+class ConsultantListSerializer(serializers.ModelSerializer):
+    skills = serializers.SerializerMethodField()
+    expertise_tags = serializers.SerializerMethodField()
+    avg_rating = serializers.SerializerMethodField()
+    total_sessions = serializers.SerializerMethodField()
+    next_available_slot = serializers.SerializerMethodField()
+
+    def get_skills(self, obj):
+        return [s.name for s in obj.skills.all()]
+
+    def get_expertise_tags(self, obj):
+        return [t.tag for t in obj.expertise_tags.all()]
+
+    def get_avg_rating(self, obj):
+        from django.db.models import Avg
+        from consultations.models import Review
+        result = Review.objects.filter(session__consultant=obj).aggregate(avg=Avg('rating'))
+        return round(result['avg'], 1) if result['avg'] else None
+
+    def get_total_sessions(self, obj):
+        return obj.consultation_sessions_as_consultant.filter(status='completed').count()
+
+    def get_next_available_slot(self, obj):
+        import datetime
+        days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+        today_idx = datetime.date.today().weekday()
+        slots = list(obj.consultation_availability.filter(is_available=True))
+        for offset in range(7):
+            day = days[(today_idx + offset) % 7]
+            match = next((s for s in slots if s.day_of_week == day), None)
+            if match:
+                return {
+                    'day': day,
+                    'start_time': str(match.start_time),
+                    'end_time': str(match.end_time),
+                    'days_from_now': offset,
+                }
+        return None
+
+    class Meta:
+        model = User
+        fields = [
+            'id', 'username', 'first_name', 'last_name', 'bio',
+            'profile_image', 'hourly_rate', 'is_verified', 'is_featured',
+            'kyc_status', 'is_online', 'timezone', 'location',
+            'working_industry', 'skills', 'expertise_tags',
+            'avg_rating', 'total_sessions', 'next_available_slot',
         ]
 
 
