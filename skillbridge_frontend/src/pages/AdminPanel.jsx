@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import Swal from 'sweetalert2'
 import api from '../services/api'
@@ -122,14 +122,15 @@ export default function AdminPanel() {
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
+  const debounceRef = useRef(null)
 
   useEffect(() => {
     if (user?.role === 'admin' && user?.is_staff) {
-      fetchData(activeTab)
+      fetchData(activeTab, searchTerm)
     }
   }, [activeTab])
 
-  const fetchData = async (tab) => {
+  const fetchData = async (tab, search = '') => {
     setLoading(true)
     try {
       const endpoints = {
@@ -140,9 +141,8 @@ export default function AdminPanel() {
         jobs: '/chat/admin/jobs/',
         consultations: '/chat/admin/consultations/'
       }
-
       const response = await api.get(endpoints[tab], {
-        params: searchTerm ? { search: searchTerm } : {}
+        params: search ? { search } : {}
       })
       setData(Array.isArray(response.data) ? response.data : [])
     } catch (error) {
@@ -214,8 +214,22 @@ export default function AdminPanel() {
     }
   }
 
+  const SEARCH_PLACEHOLDER = {
+    users: 'Search by username or email…',
+    projects: 'Search by title, client, or category…',
+    proposals: 'Search by project title or freelancer…',
+    payments: 'Search by project title or freelancer…',
+    jobs: 'Search by title, client, or company…',
+    consultations: 'Search by consultant or client username…',
+  }
+
   const handleSearch = (e) => {
-    setSearchTerm(e.target.value)
+    const val = e.target.value
+    setSearchTerm(val)
+    clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      fetchData(activeTab, val)
+    }, 350)
   }
 
   if (user?.role !== 'admin' || !user?.is_staff) {
@@ -346,7 +360,7 @@ export default function AdminPanel() {
           {tabs.map(tab => (
             <button
               key={tab.id}
-              onClick={() => { setActiveTab(tab.id); setRoleFilter('all') }}
+              onClick={() => { setActiveTab(tab.id); setRoleFilter('all'); setSearchTerm('') }}
               className={`px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition ${
                 activeTab === tab.id
                   ? 'bg-indigo-600 text-white'
@@ -358,37 +372,40 @@ export default function AdminPanel() {
           ))}
         </div>
 
-        {/* Search Bar */}
-        {activeTab === 'users' && (
+        {/* Search Bar — all tabs except KYC */}
+        {activeTab !== 'kyc' && (
           <div className="mb-4 space-y-3">
             <input
               type="text"
-              placeholder="Search users..."
+              placeholder={SEARCH_PLACEHOLDER[activeTab] || 'Search…'}
               value={searchTerm}
               onChange={handleSearch}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600"
             />
-            <div className="flex flex-wrap gap-2">
-              {[
-                { value: 'all',        label: '👥 All' },
-                { value: 'client',     label: '👤 Clients' },
-                { value: 'freelancer', label: '💼 Freelancers' },
-                { value: 'consultant', label: '🎓 Consultants' },
-                { value: 'admin',      label: '🛡 Admins' },
-              ].map(({ value, label }) => (
-                <button
-                  key={value}
-                  onClick={() => setRoleFilter(value)}
-                  className={`px-4 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition ${
-                    roleFilter === value
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            {activeTab === 'users' && (
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: 'all',        label: '👥 All' },
+                  { value: 'client',     label: '👤 Clients' },
+                  { value: 'freelancer', label: '💼 Freelancers' },
+                  { value: 'consultant', label: '🎓 Consultants' },
+                  { value: 'both',       label: '⭐ Both' },
+                  { value: 'admin',      label: '🛡 Admins' },
+                ].map(({ value, label }) => (
+                  <button
+                    key={value}
+                    onClick={() => setRoleFilter(value)}
+                    className={`px-4 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition ${
+                      roleFilter === value
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

@@ -241,10 +241,16 @@ class AdminViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['get'])
     def projects(self, request):
+        from django.db.models import Q
+        search = request.query_params.get('search', '')
         status_filter = request.query_params.get('status', '')
         projects = Project.objects.all()
         if status_filter:
             projects = projects.filter(status=status_filter)
+        if search:
+            projects = projects.filter(
+                Q(title__icontains=search) | Q(client__username__icontains=search) | Q(category__icontains=search)
+            )
 
         data = [{
             'id': p.id,
@@ -258,10 +264,16 @@ class AdminViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['get'])
     def proposals(self, request):
+        from django.db.models import Q
+        search = request.query_params.get('search', '')
         status_filter = request.query_params.get('status', '')
         proposals = Proposal.objects.all()
         if status_filter:
             proposals = proposals.filter(status=status_filter)
+        if search:
+            proposals = proposals.filter(
+                Q(project__title__icontains=search) | Q(freelancer__username__icontains=search)
+            )
 
         data = [{
             'id': p.id,
@@ -275,10 +287,16 @@ class AdminViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['get'])
     def payments(self, request):
+        from django.db.models import Q
+        search = request.query_params.get('search', '')
         status_filter = request.query_params.get('status', '')
         payments = Payment.objects.all()
         if status_filter:
             payments = payments.filter(status=status_filter)
+        if search:
+            payments = payments.filter(
+                Q(proposal__project__title__icontains=search) | Q(proposal__freelancer__username__icontains=search)
+            )
 
         data = [{
             'id': p.id,
@@ -292,10 +310,16 @@ class AdminViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['get'])
     def jobs(self, request):
+        from django.db.models import Q
+        search = request.query_params.get('search', '')
         status_filter = request.query_params.get('status', '')
         jobs = Job.objects.all()
         if status_filter:
             jobs = jobs.filter(status=status_filter)
+        if search:
+            jobs = jobs.filter(
+                Q(title__icontains=search) | Q(client__username__icontains=search) | Q(company__icontains=search)
+            )
 
         data = [{
             'id': j.id,
@@ -309,10 +333,16 @@ class AdminViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['get'])
     def consultations(self, request):
+        from django.db.models import Q
+        search = request.query_params.get('search', '')
         status_filter = request.query_params.get('status', '')
         consultations = ConsultationSession.objects.all()
         if status_filter:
             consultations = consultations.filter(status=status_filter)
+        if search:
+            consultations = consultations.filter(
+                Q(consultant__username__icontains=search) | Q(client__username__icontains=search)
+            )
 
         data = [{
             'id': c.id,
