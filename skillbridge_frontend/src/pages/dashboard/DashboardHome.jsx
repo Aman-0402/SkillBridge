@@ -556,6 +556,94 @@ function AdminPanels({ stats }) {
   )
 }
 
+/* ─── First-login onboarding banner ──────────────────────── */
+const ONBOARDING_CHECKLIST = {
+  freelancer: [
+    { label: 'Complete your profile', to: '/profile' },
+    { label: 'Finish Identity Verification (KYC)', to: '/profile' },
+    { label: 'Set your availability slots', to: '/manage-availability' },
+    { label: 'Browse open projects', to: '/projects' },
+  ],
+  consultant: [
+    { label: 'Complete your profile', to: '/profile' },
+    { label: 'Finish Identity Verification (KYC)', to: '/profile' },
+    { label: 'Set your availability slots', to: '/manage-availability' },
+    { label: 'Browse open projects', to: '/projects' },
+  ],
+  both: [
+    { label: 'Complete your profile', to: '/profile' },
+    { label: 'Finish Identity Verification (KYC)', to: '/profile' },
+    { label: 'Set your availability slots', to: '/manage-availability' },
+    { label: 'Browse projects & consultants', to: '/projects' },
+  ],
+}
+
+function OnboardingBanner({ user }) {
+  const [visible, setVisible] = useState(false)
+  const [data, setData] = useState(null)
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('sb_onboarding')
+      if (!raw) return
+      const parsed = JSON.parse(raw)
+      if (parsed.username && user?.username && parsed.username !== user.username) return
+      setData(parsed)
+      setVisible(true)
+    } catch {
+      localStorage.removeItem('sb_onboarding')
+    }
+  }, [user?.username])
+
+  const dismiss = () => {
+    localStorage.removeItem('sb_onboarding')
+    setVisible(false)
+  }
+
+  if (!visible || !data) return null
+
+  const role = data.role || 'freelancer'
+  const items = ONBOARDING_CHECKLIST[role] || ONBOARDING_CHECKLIST.freelancer
+  const roleLabel = { freelancer: 'Freelancer', consultant: 'Consultant', both: 'Freelancer + Consultant' }[role] || 'Member'
+
+  return (
+    <div className="relative overflow-hidden rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 px-5 py-4 shadow-sm">
+      <button
+        onClick={dismiss}
+        className="absolute right-3 top-3 rounded-lg p-1.5 text-slate-400 transition hover:bg-blue-100 hover:text-slate-600"
+      >
+        <FaXmark className="text-xs" />
+      </button>
+      <div className="flex items-start gap-4">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
+          <FaCircleCheck className="text-sm" />
+        </div>
+        <div className="min-w-0 flex-1 pr-6">
+          <p className="text-sm font-black text-slate-950">
+            Welcome to SkillBridge — <span className="text-blue-700">{roleLabel}</span>
+          </p>
+          <p className="mt-0.5 text-xs text-slate-500">Complete these steps to get started:</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {items.map((item, i) => (
+              <Link
+                key={i}
+                to={item.to}
+                className="flex items-center gap-2 rounded-lg border border-blue-100 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:border-blue-300 hover:text-blue-700"
+              >
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-[10px] font-black text-blue-700">
+                  {i + 1}
+                </span>
+                {item.label}
+                <FaArrowRight className="ml-auto text-[9px] text-slate-400" />
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ─── Upcoming session banner ─────────────────────────────── */
 function UpcomingSessionBanner() {
   const [sessions, setSessions] = useState([])
@@ -746,6 +834,9 @@ function DashboardHome() {
           </div>
         </div>
       </section>
+
+      {/* First-login onboarding banner — freelancer / consultant / both only */}
+      {['freelancer', 'consultant', 'both'].includes(role) && <OnboardingBanner user={user} />}
 
       {/* Upcoming session banner — client / consultant / both */}
       {['client', 'consultant', 'both'].includes(role) && <UpcomingSessionBanner />}

@@ -1,13 +1,35 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import Swal from 'sweetalert2'
 import {
   FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash,
   FaArrowRight, FaArrowLeft, FaPhone, FaCircleCheck,
   FaBriefcase, FaLocationDot, FaFileLines,
 } from 'react-icons/fa6'
 import { useAuth } from '../hooks/useAuth'
+
+const CHECKLIST = {
+  freelancer: [
+    { text: 'Complete your profile — add bio, skills and experience' },
+    { text: 'Submit KYC identity verification in Profile settings' },
+    { text: 'Browse open projects and submit your first proposal' },
+    { text: 'Explore the Jobs board and apply to listings' },
+  ],
+  consultant: [
+    { text: 'Complete your profile — bio and areas of expertise' },
+    { text: 'Submit KYC — required before accepting any session' },
+    { text: 'Set your session rates per type in Profile settings' },
+    { text: 'Add availability slots in Sessions dashboard' },
+  ],
+  both: [
+    { text: 'Complete your profile — bio, skills, and expertise' },
+    { text: 'Submit KYC — required for both projects and sessions' },
+    { text: 'Set session rates in Profile and add availability slots' },
+    { text: 'Browse projects, jobs, and start building your client base' },
+  ],
+}
+
+const ROLE_LABELS = { freelancer: 'Freelancer', consultant: 'Consultant', both: 'Freelancer + Consultant' }
 
 const IDENTITIES = ['Consultant', 'Trainer', 'Mentor', 'Expert', 'Firm']
 
@@ -83,9 +105,15 @@ function validate(step, form) {
 
 export default function RegisterFreelancer() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { register } = useAuth()
 
+  const role = location.state?.role || 'freelancer'
+  const roleLabel = ROLE_LABELS[role] || 'Freelancer'
+
   const [step, setStep] = useState(0)
+  const [done, setDone] = useState(false)
+  const [registeredName, setRegisteredName] = useState('')
   const [form, setForm] = useState({
     fullName: '', username: '', phone: '', email: '',
     identity: '', industry: '', state: '',
@@ -124,7 +152,7 @@ export default function RegisterFreelancer() {
     setLoading(true)
     setErrors({})
     try {
-      await register(form.username.trim(), form.email.trim(), form.password, form.password2, 'freelancer', {
+      await register(form.username.trim(), form.email.trim(), form.password, form.password2, role, {
         full_name: form.fullName.trim(),
         phone: form.phone.trim(),
         state: form.state,
@@ -133,18 +161,9 @@ export default function RegisterFreelancer() {
         experience_description: form.experience.trim(),
         bio: form.bio.trim(),
       })
-      await Swal.fire({
-        icon: 'success',
-        title: 'Account Created!',
-        html: `Welcome, <strong>${form.fullName.trim()}</strong>!<br/>Your Freelancer / Consultant account is ready. Please log in to continue.`,
-        confirmButtonText: 'Go to Login',
-        confirmButtonColor: '#059669',
-        background: '#0f172a',
-        color: '#f1f5f9',
-        iconColor: '#22c55e',
-        customClass: { popup: 'rounded-2xl' },
-      })
-      navigate('/login')
+      localStorage.setItem('sb_onboarding', JSON.stringify({ username: form.username.trim(), role, ts: Date.now() }))
+      setRegisteredName(form.fullName.trim().split(' ')[0])
+      setDone(true)
     } catch (error) {
       const msg = typeof error === 'object'
         ? Object.values(error).flat().join('<br/>')
@@ -189,6 +208,58 @@ export default function RegisterFreelancer() {
     }`
 
   const wordCount = countWords(form.experience)
+
+  /* ── Checklist / done screen ── */
+  if (done) {
+    const steps = CHECKLIST[role] || CHECKLIST.freelancer
+    return (
+      <section className="relative -mt-24 min-h-screen overflow-hidden bg-slate-950 px-4 pb-16 pt-32 lg:px-8">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[32rem] bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.15),transparent_65%)]" />
+        <div className="relative mx-auto max-w-lg">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            className="rounded-2xl border border-white/10 bg-white/[0.06] p-8 shadow-[0_32px_100px_rgba(0,0,0,0.5)] backdrop-blur-xl"
+          >
+            {/* Success header */}
+            <div className="mb-6 flex flex-col items-center text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/20 text-3xl">
+                <FaCircleCheck className="text-emerald-400" />
+              </div>
+              <h2 className="mt-4 text-2xl font-black text-white">You're in, {registeredName}!</h2>
+              <p className="mt-1 text-sm text-slate-400">
+                Account created as <span className="font-black text-emerald-400">{roleLabel}</span>. Here's what to do next:
+              </p>
+            </div>
+
+            {/* Checklist */}
+            <div className="space-y-3">
+              {steps.map((item, i) => (
+                <div key={i} className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-xs font-black text-emerald-400">
+                    {i + 1}
+                  </span>
+                  <p className="text-sm text-slate-300">{item.text}</p>
+                </div>
+              ))}
+            </div>
+
+            <p className="mt-5 text-center text-xs text-slate-500">
+              You can always revisit these steps from your dashboard.
+            </p>
+
+            <button
+              onClick={() => navigate('/login')}
+              className="mt-6 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-black text-white shadow-[0_14px_36px_rgba(5,150,105,0.3)] transition hover:-translate-y-0.5 hover:bg-emerald-500"
+            >
+              Continue to Login <FaArrowRight />
+            </button>
+          </motion.div>
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section className="relative -mt-24 min-h-screen overflow-hidden bg-slate-950 px-4 pb-16 pt-32 lg:px-8">
