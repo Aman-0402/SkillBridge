@@ -31,8 +31,21 @@ export default function Login() {
       await login(formData.username, formData.password)
       navigate('/dashboard')
     } catch (error) {
-      if (typeof error === 'object') setErrors(error)
-      else setErrors({ general: 'Invalid credentials. Please try again.' })
+      if (typeof error === 'string') {
+        setErrors({ general: error })
+      } else if (error && typeof error === 'object') {
+        const { detail, non_field_errors, username, password, ...rest } = error
+        const general = detail
+          || (Array.isArray(non_field_errors) ? non_field_errors[0] : non_field_errors)
+          || (Object.keys(rest).length === 0 ? 'Invalid credentials. Please try again.' : null)
+        setErrors({
+          ...(username && { username: Array.isArray(username) ? username[0] : username }),
+          ...(password && { password: Array.isArray(password) ? password[0] : password }),
+          ...(general && { general }),
+        })
+      } else {
+        setErrors({ general: 'Something went wrong. Please try again.' })
+      }
     } finally {
       setLoading(false)
     }
