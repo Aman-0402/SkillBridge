@@ -83,7 +83,9 @@ src/
 | `/about` | `AboutPage` |
 | `/contact` | `ContactPage` |
 | `/login` | `Login` |
-| `/register` | `Register` |
+| `/register` | `Register` — role picker (Freelancer / Consultant); "Both" is premium, not shown |
+| `/register/freelancer` | `RegisterFreelancer` — full registration form + post-success checklist screen |
+| `/register/client` | `RegisterClient` — client registration |
 
 ### Protected (require auth, rendered inside `DashboardLayout`)
 | Path | Component | Notes |
@@ -120,6 +122,7 @@ src/
 
 ### `DashboardHome.jsx`
 - Role-aware stat cards (`buildStatCards`)
+- **Onboarding banner** — reads `sb_onboarding` from `localStorage` on mount, verifies username match, shows dismissable role-specific checklist (4 numbered steps as clickable links), removes key on dismiss; fires once per registration; shown for `freelancer`/`consultant`/`both` roles only
 - **Upcoming session banner** — fetches `my_sessions`, filters `confirmed` sessions starting within 24h, shows live countdown + partner name + dismiss button
 - Revenue area chart (last 6 months, Recharts)
 - Role-specific bottom panels: `ClientPanels`, `FreelancerPanels`, `ConsultantPanels`, `BothPanels`, `AdminPanels`
@@ -184,8 +187,10 @@ Two views, role-selected:
 `AuthContext` stores `user` + `tokens` in `localStorage`.  
 `api.js` Axios interceptor:
 1. Attaches `Authorization: Bearer <access>` to every request
-2. On 401: attempts silent refresh via `POST /api/auth/refresh/`
+2. On 401 (excluding `/auth/login/`): attempts silent refresh via `POST /api/auth/refresh/`
 3. On refresh failure: clears tokens + redirects to `/login`
+
+`/auth/login/` is explicitly excluded from the 401 interceptor — wrong credentials return `{ detail: "..." }` directly to the catch block in `Login.jsx`, which shows a SweetAlert2 error popup. Without this exclusion, the interceptor would attempt a token refresh (which also fails) and reload the page instead of showing the error.
 
 ---
 

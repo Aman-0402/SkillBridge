@@ -96,7 +96,7 @@ SkillBridge/
 | **Client** | Post projects, browse + book consultants, make payments, manage appointments, respond to reschedule requests |
 | **Freelancer** | Browse projects, submit proposals, apply to jobs, track earnings |
 | **Consultant** | Manage availability, approve/decline sessions, request reschedules, set session rates, complete sessions |
-| **Both** | Freelancer + Consultant combined workspace |
+| **Both** | Freelancer + Consultant combined workspace — **premium only**, activated after payment, not available at registration |
 | **Admin** | Full platform access, analytics, manage all entities, release/refund escrow |
 
 ---
@@ -303,11 +303,14 @@ REDIS_URL=redis://localhost:6379/0
 ## Development Notes
 
 - Frontend and backend are fully decoupled — REST API + WebSocket only.
-- Axios instance in `src/services/api.js` handles JWT injection and silent refresh on 401.
+- Axios instance in `src/services/api.js` handles JWT injection and silent refresh on 401. The `/auth/login/` endpoint is excluded from the 401 interceptor to prevent refresh loops on bad credentials.
+- Login errors (wrong credentials, non-existent user) surface via SweetAlert2 popup. Django's `detail` field is normalized to a human-readable message.
 - MySQL `utf8` charset — backend system messages must not contain emoji (stored as `????`). Use plain text only.
 - `complete_session` is time-locked: server returns 400 if called before `scheduled_date + end_time`.
 - Reschedule flow: `RescheduleRequest` creates a new DB record + sets session to `reschedule_requested`. Responding sets session back to `confirmed` (reject) or `rescheduled` (approve).
 - Payment `session_cost` is always computed server-side from `ConsultantSessionRate` — never accepted raw from client.
+- Registration role picker shows only **Freelancer** and **Consultant**. "Both" role is premium and activated separately after payment.
+- First-login onboarding banner: `RegisterFreelancer.jsx` saves `sb_onboarding` to `localStorage` on successful registration. `DashboardHome.jsx` reads it on mount, shows a dismissable role-specific checklist (4 steps), and removes the key on dismiss — fires once only.
 
 ---
 
