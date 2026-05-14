@@ -1,7 +1,7 @@
 import { useNavigate, Link, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
-  FaArrowRight, FaCircleCheck, FaBriefcase, FaUserTie, FaLayerGroup,
+  FaArrowRight, FaCircleCheck, FaBriefcase, FaUserTie,
 } from 'react-icons/fa6'
 import { useAuth } from '../hooks/useAuth'
 
@@ -27,17 +27,6 @@ const roleCards = [
     description: 'Offer expert sessions, manage availability, and set your own session rates.',
     tag: 'For domain experts',
     perks: ['Offer paid sessions', 'Set availability slots', 'Manage client bookings'],
-  },
-  {
-    value: 'both',
-    label: 'Both',
-    icon: FaLayerGroup,
-    iconBg: 'bg-purple-50',
-    iconColor: 'text-purple-600',
-    accent: 'hover:border-purple-500/50',
-    description: 'Freelance work + consulting sessions — the complete professional toolkit.',
-    tag: 'For versatile professionals',
-    perks: ['Everything in Freelancer', 'Everything in Consultant', 'Unified earnings dashboard'],
   },
 ]
 

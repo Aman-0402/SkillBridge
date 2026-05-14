@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useLocation, Link, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { FaUser, FaLock, FaEye, FaEyeSlash, FaArrowRight, FaCircleCheck } from 'react-icons/fa6'
+import Swal from 'sweetalert2'
 import { useAuth } from '../hooks/useAuth'
 
 export default function Login() {
@@ -31,21 +32,29 @@ export default function Login() {
       await login(formData.username, formData.password)
       navigate('/dashboard')
     } catch (error) {
+      let message = 'Something went wrong. Please try again.'
+      let fieldErrors = {}
+
       if (typeof error === 'string') {
-        setErrors({ general: error })
+        message = error
       } else if (error && typeof error === 'object') {
-        const { detail, non_field_errors, username, password, ...rest } = error
-        const general = detail
-          || (Array.isArray(non_field_errors) ? non_field_errors[0] : non_field_errors)
-          || (Object.keys(rest).length === 0 ? 'Invalid credentials. Please try again.' : null)
-        setErrors({
-          ...(username && { username: Array.isArray(username) ? username[0] : username }),
-          ...(password && { password: Array.isArray(password) ? password[0] : password }),
-          ...(general && { general }),
-        })
-      } else {
-        setErrors({ general: 'Something went wrong. Please try again.' })
+        const { detail, non_field_errors, username, password } = error
+        if (detail) message = detail
+        else if (Array.isArray(non_field_errors)) message = non_field_errors[0]
+        else if (typeof non_field_errors === 'string') message = non_field_errors
+        if (username) fieldErrors.username = Array.isArray(username) ? username[0] : username
+        if (password) fieldErrors.password = Array.isArray(password) ? password[0] : password
       }
+
+      setErrors(fieldErrors)
+      Swal.fire({
+        icon: 'error',
+        title: 'Login Failed',
+        text: message,
+        confirmButtonColor: '#2563eb',
+        background: '#0f172a',
+        color: '#f1f5f9',
+      })
     } finally {
       setLoading(false)
     }
