@@ -75,9 +75,17 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
                 return Response({'detail': 'Session not in payable state.'}, status=status.HTTP_400_BAD_REQUEST)
             paid_to = linked_session.consultant
             base_amount = linked_session.session_cost
+            if not base_amount:
+                return Response(
+                    {'detail': 'Session cost is not set. The consultant needs to set session rates before payment can proceed.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             description = f'Consultation session with {paid_to.username}'
 
-        fees = calculate_fees(base_amount)
+        try:
+            fees = calculate_fees(base_amount)
+        except Exception as e:
+            return Response({'detail': f'Fee calculation failed: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
         payment = Payment.objects.create(
             proposal=proposal,

@@ -128,14 +128,22 @@ class ConsultationSessionViewSet(viewsets.ModelViewSet):
 
         # System message
         type_display = dict(ConsultationSession.SESSION_TYPE_CHOICES).get(session.session_type, session.session_type)
+        client_name = client.get_full_name().strip() or client.username
+        consultant_name = consultant.get_full_name().strip() or consultant.username
         Message.objects.create(
             conversation=conversation,
             sender=client,
             content=(
-                f"📅 Session booked: {session.title}\n"
-                f"Type: {type_display} | Date: {session.scheduled_date} | "
-                f"Time: {session.start_time}–{session.end_time}\n"
-                f"Payment is secured in escrow. Please coordinate session details professionally."
+                f"Session Booking Confirmed\n"
+                f"---------------------------\n"
+                f"Session: {session.title}\n"
+                f"Type: {type_display}\n"
+                f"Date: {session.scheduled_date}\n"
+                f"Time: {session.start_time} to {session.end_time}\n"
+                f"Client: {client_name}\n"
+                f"Consultant: {consultant_name}\n"
+                f"---------------------------\n"
+                f"Payment is secured in escrow. Use this chat to coordinate session details."
             )
         )
 
@@ -256,7 +264,29 @@ class ConsultationSessionViewSet(viewsets.ModelViewSet):
             return Response({'detail': 'Only consultant can confirm session'}, status=status.HTTP_403_FORBIDDEN)
         session.status = 'confirmed'
         session.save()
-        from core.models import create_notification
+        from core.models import create_notification, Conversation, Message
+        consultant_name = request.user.get_full_name().strip() or request.user.username
+        client_name = session.client.get_full_name().strip() or session.client.username
+        type_display = dict(ConsultationSession.SESSION_TYPE_CHOICES).get(session.session_type, session.session_type)
+        existing = Conversation.objects.filter(participants=request.user).filter(participants=session.client)
+        if existing.exists():
+            conversation = existing.first()
+            Message.objects.create(
+                conversation=conversation,
+                sender=request.user,
+                content=(
+                    f"Session Approved\n"
+                    f"---------------------------\n"
+                    f"Session: {session.title}\n"
+                    f"Type: {type_display}\n"
+                    f"Date: {session.scheduled_date}\n"
+                    f"Time: {session.start_time} to {session.end_time}\n"
+                    f"Client: {client_name}\n"
+                    f"Consultant: {consultant_name}\n"
+                    f"---------------------------\n"
+                    f"Session confirmed. Funds are secured in escrow. Share meeting link or any details here."
+                )
+            )
         create_notification(
             session.client, 'session_confirmed',
             'Session Confirmed ✅',

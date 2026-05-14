@@ -40,10 +40,11 @@ class ConsultationSessionCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = ConsultationSession
         fields = [
-            'consultant', 'session_type', 'title', 'description',
+            'id', 'consultant', 'session_type', 'title', 'description',
             'scheduled_date', 'start_time', 'end_time', 'session_cost',
-            'rate_id', 'duration_minutes',
+            'status', 'rate_id', 'duration_minutes',
         ]
+        read_only_fields = ['id', 'status']
         extra_kwargs = {
             'session_cost': {'required': False},
         }
