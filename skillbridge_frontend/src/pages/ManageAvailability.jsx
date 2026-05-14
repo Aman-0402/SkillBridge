@@ -3,7 +3,7 @@ import {
   FaCalendarCheck, FaCalendarPlus, FaTrash, FaCircleCheck,
   FaClock, FaUser, FaIndianRupeeSign, FaStar,
   FaChevronLeft, FaChevronRight, FaList, FaCalendarDays,
-  FaArrowsRotate, FaXmark, FaCheck, FaLightbulb,
+  FaArrowsRotate, FaXmark, FaCheck, FaLightbulb, FaShieldHalved,
 } from 'react-icons/fa6'
 import Swal from 'sweetalert2'
 import api from '../services/api'
@@ -683,6 +683,8 @@ function ClientAppointments() {
 
 /* ─── CONSULTANT / FREELANCER VIEW ─────────────────────── */
 function ConsultantAvailability() {
+  const { user } = useAuth()
+  const kycVerified = user?.kyc_status === 'verified'
   const [availability, setAvailability] = useState([])
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
@@ -822,6 +824,31 @@ function ConsultantAvailability() {
         <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-600">Schedule</p>
         <h1 className="mt-1 text-2xl font-black text-slate-950">Manage Availability</h1>
       </div>
+
+      {/* KYC banner for consultant */}
+      {!kycVerified && (
+        <div className="flex items-start gap-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white">
+            <FaShieldHalved className="text-sm" />
+          </div>
+          <div className="flex-1">
+            <p className="font-black text-slate-950">Identity Verification Required</p>
+            <p className="mt-0.5 text-xs text-slate-600">
+              Complete KYC before you can approve session requests. Clients cannot book you until you are verified.
+            </p>
+            {user?.kyc_status === 'pending' && (
+              <p className="mt-2 inline-block rounded-lg bg-amber-100 px-3 py-1 text-xs font-black text-amber-700">
+                KYC under review — you'll be notified on approval.
+              </p>
+            )}
+            {(user?.kyc_status === 'unverified' || user?.kyc_status === 'rejected') && (
+              <a href="/profile" className="mt-2 inline-flex items-center gap-1.5 text-xs font-black text-amber-700 hover:text-amber-900">
+                Submit KYC in Profile <FaArrowsRotate className="text-[10px]" />
+              </a>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Add slot */}
@@ -993,8 +1020,11 @@ function ConsultantAvailability() {
                     )}
                     {(session.status === 'awaiting_approval' || session.status === 'pending') && (
                       <div className="flex items-center gap-2">
-                        <button onClick={() => handleApprove(session.id)}
-                          className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-black text-white hover:bg-emerald-500">
+                        <button
+                          onClick={() => kycVerified ? handleApprove(session.id) : Swal.fire({ icon: 'warning', title: 'KYC Required', text: 'Complete identity verification in your Profile before approving sessions.', timer: 2500, showConfirmButton: false })}
+                          className={`flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-black text-white transition ${kycVerified ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-slate-300 cursor-not-allowed'}`}
+                          title={kycVerified ? '' : 'KYC required'}
+                        >
                           <FaCircleCheck /> Approve
                         </button>
                         <button onClick={() => handleDecline(session.id)}

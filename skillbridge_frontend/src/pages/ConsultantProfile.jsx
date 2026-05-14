@@ -5,7 +5,7 @@ import {
   FaIndianRupeeSign, FaLocationDot, FaArrowLeft, FaLinkedin,
   FaGithub, FaXTwitter, FaLink, FaVideo, FaPhone, FaEnvelope,
   FaPerson, FaBriefcase, FaLightbulb, FaUserTie, FaCheck,
-  FaChevronRight, FaFlag,
+  FaChevronRight, FaFlag, FaShieldHalved, FaArrowRight,
 } from 'react-icons/fa6'
 import Swal from 'sweetalert2'
 import api from '../services/api'
@@ -694,6 +694,40 @@ export default function ConsultantProfile() {
         {/* ── Right: Sticky booking sidebar ── */}
         {!isSelf && (
           <div className="lg:sticky lg:top-6 lg:self-start space-y-4">
+            {/* KYC gate */}
+            {user?.kyc_status !== 'verified' && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white">
+                    <FaShieldHalved />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-black text-slate-950">Identity Verification Required</p>
+                    <p className="mt-1 text-xs text-slate-600">
+                      Complete KYC to book a session. Your identity must be verified before making any consultation bookings.
+                    </p>
+                    {user?.kyc_status === 'pending' && (
+                      <p className="mt-2 rounded-lg bg-amber-100 px-3 py-1.5 text-xs font-black text-amber-700">
+                        KYC under review — you'll be notified once approved.
+                      </p>
+                    )}
+                    {user?.kyc_status === 'rejected' && (
+                      <p className="mt-2 rounded-lg bg-rose-100 px-3 py-1.5 text-xs font-black text-rose-700">
+                        KYC rejected — resubmit in your profile.
+                      </p>
+                    )}
+                    {user?.kyc_status === 'unverified' && (
+                      <Link
+                        to="/profile"
+                        className="mt-3 flex items-center gap-1.5 text-xs font-black text-amber-700 hover:text-amber-900"
+                      >
+                        Go to Profile to submit KYC <FaArrowRight className="text-[10px]" />
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
               {/* Rate */}
               <div className="mb-5 flex items-center justify-between">
@@ -863,10 +897,11 @@ export default function ConsultantProfile() {
 
                 <button
                   type="submit"
-                  disabled={booking}
-                  className="w-full rounded-xl bg-blue-600 py-3 text-sm font-black text-white shadow-lg shadow-blue-900/20 transition hover:bg-blue-500 disabled:opacity-60"
+                  disabled={booking || user?.kyc_status !== 'verified'}
+                  title={user?.kyc_status !== 'verified' ? 'Complete KYC verification first' : ''}
+                  className="w-full rounded-xl bg-blue-600 py-3 text-sm font-black text-white shadow-lg shadow-blue-900/20 transition hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  {booking ? 'Booking…' : '📅 Book Session'}
+                  {booking ? 'Booking…' : user?.kyc_status !== 'verified' ? 'KYC Required to Book' : 'Book Session'}
                 </button>
               </form>
             </div>

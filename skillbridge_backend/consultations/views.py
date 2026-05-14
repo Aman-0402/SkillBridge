@@ -114,6 +114,9 @@ class ConsultationSessionViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         client = self.request.user
+        if client.kyc_status != 'verified':
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Identity verification (KYC) required before booking a session. Please complete KYC in your profile.')
         session = serializer.save(client=client, status='awaiting_approval')
 
         # Auto-create conversation between client and consultant
@@ -262,6 +265,8 @@ class ConsultationSessionViewSet(viewsets.ModelViewSet):
         session = self.get_object()
         if session.consultant != request.user:
             return Response({'detail': 'Only consultant can confirm session'}, status=status.HTTP_403_FORBIDDEN)
+        if request.user.kyc_status != 'verified':
+            return Response({'detail': 'Identity verification (KYC) required before accepting sessions. Please complete KYC in your profile.'}, status=status.HTTP_403_FORBIDDEN)
         session.status = 'confirmed'
         session.save()
         from core.models import create_notification, Conversation, Message
