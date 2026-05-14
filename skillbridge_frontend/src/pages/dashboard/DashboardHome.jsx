@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  FaCalendarCheck, FaFolderPlus, FaMagnifyingGlass,
+  FaCalendarCheck, FaFolderPlus, FaMagnifyingGlass, FaXmark, FaBell,
   FaUserTie, FaUser, FaShieldHalved, FaFolderOpen,
   FaIndianRupeeSign, FaChartLine, FaCircleCheck, FaHourglass,
   FaArrowRight, FaChartPie, FaBriefcase, FaFileLines,
@@ -556,6 +556,80 @@ function AdminPanels({ stats }) {
   )
 }
 
+/* ─── Upcoming session banner ─────────────────────────────── */
+function UpcomingSessionBanner() {
+  const [sessions, setSessions] = useState([])
+  const [dismissed, setDismissed] = useState(false)
+  const [tick, setTick] = useState(0)
+  const intervalRef = useRef(null)
+
+  useEffect(() => {
+    api.get('/consultations/sessions/my_sessions/')
+      .then(res => {
+        const data = Array.isArray(res.data) ? res.data : res.data.results || []
+        const now = Date.now()
+        const in24h = now + 24 * 60 * 60 * 1000
+        setSessions(data.filter(s => {
+          if (s.status !== 'confirmed') return false
+          const ms = new Date(`${s.scheduled_date}T${s.start_time}`).getTime()
+          return ms > now && ms <= in24h
+        }))
+      })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (sessions.length === 0) return
+    intervalRef.current = setInterval(() => setTick(t => t + 1), 1000)
+    return () => clearInterval(intervalRef.current)
+  }, [sessions.length])
+
+  if (dismissed || sessions.length === 0) return null
+
+  const s = sessions[0]
+  const partner = s.client?.username || s.consultant?.username || ''
+  const sessionMs = new Date(`${s.scheduled_date}T${s.start_time}`).getTime()
+  const diff = Math.max(0, sessionMs - Date.now())
+  const totalSecs = Math.floor(diff / 1000)
+  const hours = Math.floor(totalSecs / 3600)
+  const mins = Math.floor((totalSecs % 3600) / 60)
+  const secs = totalSecs % 60
+  const pad = n => String(n).padStart(2, '0')
+  const countdown = diff === 0 ? 'Starting now' : hours > 0 ? `${pad(hours)}:${pad(mins)}:${pad(secs)}` : `${pad(mins)}:${pad(secs)}`
+
+  return (
+    <div className="relative overflow-hidden rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-5 py-4 shadow-sm">
+      <div className="flex items-center gap-4">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white">
+          <FaBell className="text-sm" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-black text-slate-950">
+            Upcoming session{sessions.length > 1 ? ` (+${sessions.length - 1} more)` : ''} in <span className="tabular-nums text-amber-700">{countdown}</span>
+          </p>
+          <p className="mt-0.5 truncate text-xs text-slate-500">
+            <span className="font-bold">{s.title || s.session_type}</span>
+            {partner && <> · with {partner}</>}
+            {' · '}{s.scheduled_date} {s.start_time}–{s.end_time}
+          </p>
+        </div>
+        <Link
+          to="/manage-availability"
+          className="shrink-0 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-black text-white transition hover:bg-amber-600"
+        >
+          View details
+        </Link>
+        <button
+          onClick={() => setDismissed(true)}
+          className="shrink-0 rounded-lg p-1.5 text-slate-400 transition hover:bg-amber-100 hover:text-slate-600"
+        >
+          <FaXmark className="text-xs" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 /* ─── Quick actions ───────────────────────────────────────── */
 const QUICK_ACTIONS = {
   client: [
@@ -672,6 +746,9 @@ function DashboardHome() {
           </div>
         </div>
       </section>
+
+      {/* Upcoming session banner — client / consultant / both */}
+      {['client', 'consultant', 'both'].includes(role) && <UpcomingSessionBanner />}
 
       {/* Stat cards */}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

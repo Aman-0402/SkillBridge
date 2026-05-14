@@ -3,35 +3,253 @@ import {
   FaCalendarCheck, FaCalendarPlus, FaTrash, FaCircleCheck,
   FaClock, FaUser, FaIndianRupeeSign, FaStar,
   FaChevronLeft, FaChevronRight, FaList, FaCalendarDays,
+  FaArrowsRotate, FaXmark, FaCheck, FaLightbulb,
 } from 'react-icons/fa6'
 import Swal from 'sweetalert2'
 import api from '../services/api'
 import { useAuth } from '../hooks/useAuth'
 
+/* ─── Countdown timer ──────────────────────────────────── */
+function Countdown({ date, startTime }) {
+  const [remaining, setRemaining] = useState(null)
+
+  useEffect(() => {
+    const sessionMs = new Date(`${date}T${startTime}`).getTime()
+    const tick = () => setRemaining(sessionMs - Date.now())
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [date, startTime])
+
+  if (remaining === null) return null
+
+  const pad = n => String(n).padStart(2, '0')
+
+  if (remaining <= 0) return (
+    <span className="rounded-lg bg-cyan-50 px-2.5 py-1 text-xs font-black text-cyan-700">
+      Session started
+    </span>
+  )
+
+  const totalSecs = Math.floor(remaining / 1000)
+  const days = Math.floor(totalSecs / 86400)
+  const hours = Math.floor((totalSecs % 86400) / 3600)
+  const mins = Math.floor((totalSecs % 3600) / 60)
+  const secs = totalSecs % 60
+
+  if (days > 0) return (
+    <span className="rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-black text-blue-700">
+      {days}d {pad(hours)}h away
+    </span>
+  )
+
+  return (
+    <span className={`rounded-lg px-2.5 py-1 text-xs font-black tabular-nums ${hours === 0 ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700'}`}>
+      {pad(hours)}:{pad(mins)}:{pad(secs)}
+    </span>
+  )
+}
+
 /* ─── Status badge ─────────────────────────────────────── */
 const STATUS_STYLES = {
-  pending:            'bg-amber-50 text-amber-700',
-  awaiting_approval:  'bg-violet-50 text-violet-700',
-  confirmed:          'bg-blue-50 text-blue-700',
-  in_progress:        'bg-cyan-50 text-cyan-700',
-  completed:          'bg-emerald-50 text-emerald-700',
-  cancelled:          'bg-rose-50 text-rose-600',
-  refunded:           'bg-slate-100 text-slate-500',
+  pending:                'bg-amber-50 text-amber-700',
+  awaiting_approval:      'bg-violet-50 text-violet-700',
+  confirmed:              'bg-blue-50 text-blue-700',
+  in_progress:            'bg-cyan-50 text-cyan-700',
+  completed:              'bg-emerald-50 text-emerald-700',
+  cancelled:              'bg-rose-50 text-rose-600',
+  refunded:               'bg-slate-100 text-slate-500',
+  reschedule_requested:   'bg-orange-50 text-orange-700',
+  rescheduled:            'bg-teal-50 text-teal-700',
 }
 const STATUS_LABELS = {
-  pending:            'Pending',
-  awaiting_approval:  'Awaiting Approval',
-  confirmed:          'Confirmed',
-  in_progress:        'In Progress',
-  completed:          'Completed',
-  cancelled:          'Cancelled',
-  refunded:           'Refunded',
+  pending:                'Pending',
+  awaiting_approval:      'Awaiting Approval',
+  confirmed:              'Confirmed',
+  in_progress:            'In Progress',
+  completed:              'Completed',
+  cancelled:              'Cancelled',
+  refunded:               'Refunded',
+  reschedule_requested:   'Reschedule Requested',
+  rescheduled:            'Rescheduled',
 }
 function StatusBadge({ status }) {
   return (
     <span className={`rounded-lg px-2.5 py-1 text-xs font-black ${STATUS_STYLES[status] || 'bg-slate-100 text-slate-600'}`}>
       {STATUS_LABELS[status] || status}
     </span>
+  )
+}
+
+/* ─── Reschedule templates ─────────────────────────────── */
+const CONSULTANT_TEMPLATES = [
+  'I have a medical emergency and need to reschedule. Apologies for the inconvenience.',
+  'I have an unavoidable prior commitment that came up. Requesting a reschedule.',
+  'Technical issues on my end — unable to proceed at the current slot.',
+  'Personal emergency. Proposing the new slot below. Sorry for the disruption.',
+]
+const CLIENT_DECLINE_TEMPLATES = [
+  'The original slot works for me. Please keep it.',
+  'Neither slot works — can you suggest another time?',
+  'This reschedule does not fit my schedule. Please cancel if needed.',
+]
+
+/* ─── Reschedule modal ─────────────────────────────────── */
+function RescheduleModal({ session, onClose, onSubmit }) {
+  const [form, setForm] = useState({ new_date: '', new_start_time: '', new_end_time: '', message: '' })
+  const [saving, setSaving] = useState(false)
+
+  const applyTemplate = (tpl) => setForm(f => ({ ...f, message: tpl }))
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!form.new_date || !form.new_start_time || !form.new_end_time) {
+      Swal.fire({ icon: 'warning', title: 'Fill all date/time fields', timer: 1800, showConfirmButton: false })
+      return
+    }
+    setSaving(true)
+    try {
+      await onSubmit({ session: session.id, ...form })
+      onClose()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+        <div className="mb-5 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-black text-slate-950">Request Reschedule</h3>
+            <p className="mt-0.5 text-xs text-slate-500">{session.title} · {session.scheduled_date}</p>
+          </div>
+          <button onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+            <FaXmark />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <label className="grid gap-1.5 text-xs font-black uppercase tracking-wider text-slate-500">
+            New Date
+            <input type="date" value={form.new_date} min={new Date().toISOString().split('T')[0]}
+              onChange={e => set('new_date', e.target.value)}
+              className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100"
+            />
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="grid gap-1.5 text-xs font-black uppercase tracking-wider text-slate-500">
+              Start Time
+              <input type="time" value={form.new_start_time} onChange={e => set('new_start_time', e.target.value)}
+                className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100"
+              />
+            </label>
+            <label className="grid gap-1.5 text-xs font-black uppercase tracking-wider text-slate-500">
+              End Time
+              <input type="time" value={form.new_end_time} onChange={e => set('new_end_time', e.target.value)}
+                className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100"
+              />
+            </label>
+          </div>
+
+          <div>
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-slate-500">
+              <FaLightbulb className="text-amber-500" /> Quick templates
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {CONSULTANT_TEMPLATES.map((tpl, i) => (
+                <button key={i} type="button" onClick={() => applyTemplate(tpl)}
+                  className="rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-1 text-[11px] font-black text-orange-700 transition hover:bg-orange-100">
+                  {tpl.split(' ').slice(0, 4).join(' ')}…
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <label className="grid gap-1.5 text-xs font-black uppercase tracking-wider text-slate-500">
+            Message to client
+            <textarea rows={3} value={form.message} onChange={e => set('message', e.target.value)}
+              placeholder="Explain the reason for reschedule..."
+              className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100"
+            />
+          </label>
+
+          <div className="flex gap-3 pt-1">
+            <button type="button" onClick={onClose}
+              className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-black text-slate-600 hover:bg-slate-50">
+              Cancel
+            </button>
+            <button type="submit" disabled={saving}
+              className="flex-1 rounded-xl bg-orange-500 py-2.5 text-sm font-black text-white hover:bg-orange-600 disabled:opacity-60">
+              {saving ? 'Sending…' : 'Send Request'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+/* ─── Reschedule request card (client responding) ──────── */
+function RescheduleRequestCard({ req, onRespond }) {
+  const [message, setMessage] = useState('')
+  const [responding, setResponding] = useState(false)
+
+  const respond = async (action) => {
+    setResponding(true)
+    try {
+      await onRespond(req.id, action, message)
+    } finally {
+      setResponding(false)
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <FaArrowsRotate className="text-orange-500" />
+        <p className="text-sm font-black text-slate-950">Reschedule Request</p>
+        <span className="ml-auto text-[10px] font-black text-slate-400">
+          {new Date(req.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+        </span>
+      </div>
+      <div className="mb-2 space-y-1 text-xs text-slate-600">
+        <p><span className="font-black">Proposed date:</span> {req.new_date}</p>
+        <p><span className="font-black">Time:</span> {req.new_start_time} – {req.new_end_time}</p>
+        {req.message && <p className="mt-2 italic text-slate-500">"{req.message}"</p>}
+      </div>
+
+      <div className="mb-2">
+        <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-slate-400">
+          <FaLightbulb className="text-amber-500" /> Quick replies
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {CLIENT_DECLINE_TEMPLATES.map((tpl, i) => (
+            <button key={i} onClick={() => setMessage(tpl)}
+              className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-black text-slate-600 transition hover:border-orange-300 hover:bg-orange-50">
+              {tpl.split(' ').slice(0, 4).join(' ')}…
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <textarea rows={2} value={message} onChange={e => setMessage(e.target.value)}
+        placeholder="Optional message..."
+        className="mb-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
+      />
+
+      <div className="flex gap-2">
+        <button onClick={() => respond('approve')} disabled={responding}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 py-2 text-xs font-black text-white hover:bg-emerald-500 disabled:opacity-60">
+          <FaCheck /> Approve
+        </button>
+        <button onClick={() => respond('reject')} disabled={responding}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-rose-200 py-2 text-xs font-black text-rose-600 hover:bg-rose-50 disabled:opacity-60">
+          <FaXmark /> Decline
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -200,6 +418,7 @@ function SessionCalendar({ sessions }) {
 /* ─── CLIENT VIEW — booked sessions ───────────────────── */
 function ClientAppointments() {
   const [sessions, setSessions] = useState([])
+  const [rescheduleRequests, setRescheduleRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState('list')
   const [reviewSession, setReviewSession] = useState(null)
@@ -207,11 +426,17 @@ function ClientAppointments() {
   const [reviewComment, setReviewComment] = useState('')
   const [reviewLoading, setReviewLoading] = useState(false)
 
+  const fetchAll = () => Promise.all([
+    api.get('/consultations/sessions/my_sessions/'),
+    api.get('/consultations/reschedule-requests/'),
+  ]).then(([s, r]) => {
+    setSessions(Array.isArray(s.data) ? s.data : s.data.results || [])
+    const pending = (Array.isArray(r.data) ? r.data : r.data.results || []).filter(req => req.status === 'pending')
+    setRescheduleRequests(pending)
+  }).catch(() => {})
+
   useEffect(() => {
-    api.get('/consultations/sessions/my_sessions/')
-      .then(res => setSessions(Array.isArray(res.data) ? res.data : res.data.results || []))
-      .catch(() => setSessions([]))
-      .finally(() => setLoading(false))
+    fetchAll().finally(() => setLoading(false))
   }, [])
 
   const handleCancel = async (id) => {
@@ -231,6 +456,20 @@ function ClientAppointments() {
       Swal.fire({ icon: 'success', title: 'Cancelled', timer: 1500, showConfirmButton: false })
     } catch {
       Swal.fire({ icon: 'error', title: 'Failed to cancel', text: 'Please try again.' })
+    }
+  }
+
+  const handleRescheduleRespond = async (reqId, action, message) => {
+    try {
+      await api.post(`/consultations/reschedule-requests/${reqId}/respond/`, { action, message })
+      await fetchAll()
+      Swal.fire({
+        icon: action === 'approve' ? 'success' : 'info',
+        title: action === 'approve' ? 'Reschedule approved!' : 'Reschedule declined',
+        timer: 1800, showConfirmButton: false,
+      })
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Failed', text: err.response?.data?.detail || 'Please try again.' })
     }
   }
 
@@ -271,6 +510,24 @@ function ClientAppointments() {
         <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">Your bookings</p>
         <h1 className="mt-1 text-2xl font-black text-slate-950">Appointments</h1>
       </div>
+
+      {/* Pending reschedule requests from consultant */}
+      {rescheduleRequests.length > 0 && (
+        <div className="rounded-xl border border-orange-200 bg-white p-5 shadow-sm">
+          <div className="mb-4 flex items-center gap-2">
+            <FaArrowsRotate className="text-orange-500" />
+            <h2 className="font-black text-slate-950">Reschedule Requests</h2>
+            <span className="rounded-full bg-orange-50 px-2.5 py-0.5 text-xs font-black text-orange-700">
+              {rescheduleRequests.length}
+            </span>
+          </div>
+          <div className="space-y-3">
+            {rescheduleRequests.map(req => (
+              <RescheduleRequestCard key={req.id} req={req} onRespond={handleRescheduleRespond} />
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="mb-4 flex items-center gap-2">
@@ -344,6 +601,9 @@ function ClientAppointments() {
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-2">
                     <StatusBadge status={session.status} />
+                    {(session.status === 'confirmed' || session.status === 'rescheduled') && (
+                      <Countdown date={session.scheduled_date} startTime={session.start_time} />
+                    )}
                     {session.status === 'pending' && (
                       <button
                         onClick={() => handleCancel(session.id)}
@@ -429,6 +689,11 @@ function ConsultantAvailability() {
   const [newSlot, setNewSlot] = useState({ day_of_week: 'monday', start_time: '09:00', end_time: '10:00', buffer_minutes: 0, max_bookings_per_slot: 1 })
   const [saving, setSaving] = useState(false)
   const [viewMode, setViewMode] = useState('list')
+  const [rescheduleSession, setRescheduleSession] = useState(null)
+
+  const fetchSessions = () => api.get('/consultations/sessions/my_sessions/')
+    .then(res => setSessions(Array.isArray(res.data) ? res.data : res.data.results || []))
+    .catch(() => {})
 
   useEffect(() => {
     Promise.all([
@@ -439,6 +704,17 @@ function ConsultantAvailability() {
       setSessions(Array.isArray(sess.data) ? sess.data : sess.data.results || [])
     }).catch(() => {}).finally(() => setLoading(false))
   }, [])
+
+  const handleRescheduleSubmit = async (payload) => {
+    try {
+      await api.post('/consultations/reschedule-requests/', payload)
+      await fetchSessions()
+      Swal.fire({ icon: 'success', title: 'Reschedule request sent!', text: 'Client will be notified.', timer: 2000, showConfirmButton: false })
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Failed to send', text: err.response?.data?.detail || 'Please try again.' })
+      throw err
+    }
+  }
 
   const handleAddSlot = async (e) => {
     e.preventDefault()
@@ -649,6 +925,14 @@ function ConsultantAvailability() {
         </div>
       </div>
 
+      {rescheduleSession && (
+        <RescheduleModal
+          session={rescheduleSession}
+          onClose={() => setRescheduleSession(null)}
+          onSubmit={handleRescheduleSubmit}
+        />
+      )}
+
       {/* Sessions */}
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="mb-4 flex items-center gap-2">
@@ -704,6 +988,9 @@ function ConsultantAvailability() {
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-2">
                     <StatusBadge status={session.status} />
+                    {(session.status === 'confirmed' || session.status === 'rescheduled') && (
+                      <Countdown date={session.scheduled_date} startTime={session.start_time} />
+                    )}
                     {(session.status === 'awaiting_approval' || session.status === 'pending') && (
                       <div className="flex items-center gap-2">
                         <button onClick={() => handleApprove(session.id)}
@@ -716,11 +1003,26 @@ function ConsultantAvailability() {
                         </button>
                       </div>
                     )}
-                    {session.status === 'confirmed' && (
-                      <button onClick={() => handleComplete(session.id)}
-                        className="rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-black text-emerald-700 hover:bg-emerald-50">
-                        Complete
-                      </button>
+                    {(session.status === 'confirmed' || session.status === 'rescheduled') && (() => {
+                      const sessionEnd = new Date(`${session.scheduled_date}T${session.end_time}`)
+                      const canComplete = Date.now() >= sessionEnd.getTime()
+                      return (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => canComplete ? handleComplete(session.id) : Swal.fire({ icon: 'info', title: 'Session not over yet', text: `Complete available after ${session.end_time} on ${session.scheduled_date}.`, timer: 2500, showConfirmButton: false })}
+                            className={`rounded-lg border px-3 py-1.5 text-xs font-black transition ${canComplete ? 'border-emerald-200 text-emerald-700 hover:bg-emerald-50' : 'border-slate-200 text-slate-400 cursor-not-allowed opacity-60'}`}
+                          >
+                            Complete
+                          </button>
+                          <button onClick={() => setRescheduleSession(session)}
+                            className="flex items-center gap-1 rounded-lg border border-orange-200 px-3 py-1.5 text-xs font-black text-orange-600 hover:bg-orange-50">
+                            <FaArrowsRotate className="text-[10px]" /> Reschedule
+                          </button>
+                        </div>
+                      )
+                    })()}
+                    {session.status === 'reschedule_requested' && (
+                      <span className="text-xs font-black text-orange-500">Awaiting client response</span>
                     )}
                   </div>
                 </div>

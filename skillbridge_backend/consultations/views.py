@@ -339,6 +339,13 @@ class ConsultationSessionViewSet(viewsets.ModelViewSet):
         session = self.get_object()
         if session.consultant != request.user:
             return Response({'detail': 'Only consultant can complete session'}, status=status.HTTP_403_FORBIDDEN)
+        import datetime
+        from django.utils import timezone
+        session_end = datetime.datetime.combine(session.scheduled_date, session.end_time)
+        if timezone.is_naive(session_end):
+            session_end = timezone.make_aware(session_end)
+        if timezone.now() < session_end:
+            return Response({'detail': 'Session has not ended yet. You can complete it after the scheduled end time.'}, status=status.HTTP_400_BAD_REQUEST)
         session.status = 'completed'
         session.save()
         from core.models import create_notification
