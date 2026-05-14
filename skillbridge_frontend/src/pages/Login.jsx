@@ -1,12 +1,14 @@
 import { useState } from 'react'
-import { useNavigate, Link, Navigate } from 'react-router-dom'
+import { useNavigate, useLocation, Link, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { FaUser, FaLock, FaEye, FaEyeSlash, FaArrowRight, FaCircleCheck } from 'react-icons/fa6'
 import { useAuth } from '../hooks/useAuth'
 
 export default function Login() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { login, isAuthenticated } = useAuth()
+  const idleLogout = location.state?.reason === 'inactivity'
 
   if (isAuthenticated) return <Navigate to="/dashboard" replace />
 
@@ -90,6 +92,12 @@ export default function Login() {
           <h2 className="text-2xl font-black text-white">Welcome back</h2>
           <p className="mt-1 text-sm text-slate-400">Sign in to continue to your dashboard.</p>
           <div className="mt-1 h-0.5 w-48 bg-gradient-to-r from-blue-600 to-emerald-400" />
+
+          {idleLogout && (
+            <div className="mt-5 rounded-xl border border-amber-300 bg-amber-50/10 px-4 py-3 text-sm font-bold text-amber-300">
+              Logged out due to inactivity. Sign in again.
+            </div>
+          )}
 
           {errors.general && (
             <div className="mt-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-600">

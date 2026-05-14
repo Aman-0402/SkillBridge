@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useInactivityLogout } from '../hooks/useInactivityLogout'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   FaBars, FaXmark,
@@ -209,14 +210,50 @@ function SidebarContent({ role, onLinkClick }) {
 }
 
 function DashboardLayout() {
-  const location = useLocation()
-  const { user } = useAuth()
+  const location  = useLocation()
+  const navigate  = useNavigate()
+  const { user, logout, isAuthenticated } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [notifOpen, setNotifOpen] = useState(false)
+  const [notifOpen,  setNotifOpen]  = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const notifRef = useRef(null)
 
+  const [warnVisible, setWarnVisible] = useState(false)
+  const [countdown,   setCountdown]   = useState(60)
+  const countRef = useRef(null)
+
   const role = user?.role || 'client'
+
+  const handleAutoLogout = useCallback(() => {
+    clearInterval(countRef.current)
+    setWarnVisible(false)
+    logout()
+    navigate('/login', { replace: true, state: { reason: 'inactivity' } })
+  }, [logout, navigate])
+
+  const { resetTimer } = useInactivityLogout({
+    enabled: isAuthenticated,
+    onWarn: (secs) => {
+      setCountdown(secs)
+      setWarnVisible(true)
+      countRef.current = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) { clearInterval(countRef.current); return 0 }
+          return prev - 1
+        })
+      }, 1000)
+    },
+    onDismiss: () => {
+      clearInterval(countRef.current)
+      setWarnVisible(false)
+      setCountdown(60)
+    },
+    onLogout: handleAutoLogout,
+  })
+
+  const handleStayLoggedIn = () => {
+    resetTimer()
+  }
 
   useEffect(() => {
     const fetchCount = () => {
@@ -341,6 +378,55 @@ function DashboardLayout() {
           <Outlet />
         </motion.main>
       </div>
+
+      {/* ── Inactivity warning overlay ── */}
+      <AnimatePresence>
+        {warnVisible && (
+          <motion.div
+            key="idle-warn"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.92, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-2xl text-center mx-4"
+            >
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-3xl">
+                ⏰
+              </div>
+              <h2 className="text-xl font-black text-slate-950">Still there?</h2>
+              <p className="mt-2 text-sm text-slate-500">
+                You'll be logged out in <span className="font-black text-rose-600">{countdown}s</span> due to inactivity.
+              </p>
+              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="h-1.5 rounded-full bg-rose-500 transition-all duration-1000"
+                  style={{ width: `${(countdown / 60) * 100}%` }}
+                />
+              </div>
+              <div className="mt-6 flex gap-3">
+                <button
+                  onClick={handleAutoLogout}
+                  className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-black text-slate-600 transition hover:bg-slate-50"
+                >
+                  Log out now
+                </button>
+                <button
+                  onClick={handleStayLoggedIn}
+                  className="flex-1 rounded-xl bg-blue-600 py-2.5 text-sm font-black text-white transition hover:bg-blue-500"
+                >
+                  Stay logged in
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
