@@ -8,6 +8,7 @@ import {
   FaRightFromBracket, FaTableColumns, FaUser, FaUserTie,
   FaBriefcase, FaChartPie, FaShieldHalved, FaMessage,
   FaIndianRupeeSign, FaBell, FaCircleCheck, FaFileLines, FaUsers,
+  FaVideo,
 } from 'react-icons/fa6'
 import logoBw from '../assets/newlogo.png'
 import ScrollToTop from '../components/utils/ScrollToTop'
@@ -256,6 +257,7 @@ function DashboardLayout() {
   const [warnVisible, setWarnVisible] = useState(false)
   const [countdown,   setCountdown]   = useState(60)
   const countRef = useRef(null)
+  const [sessionModal, setSessionModal] = useState(null)
 
   const role = user?.role || 'client'
 
@@ -300,6 +302,38 @@ function DashboardLayout() {
     const interval = setInterval(fetchCount, 30000)
     return () => clearInterval(interval)
   }, [])
+
+  useEffect(() => {
+    if (!['client', 'consultant', 'both'].includes(role)) return
+    const NOTIFIED_KEY = 'sb_notified_sessions'
+    const getNotified = () => { try { return JSON.parse(localStorage.getItem(NOTIFIED_KEY) || '[]') } catch { return [] } }
+    const addNotified = (id) => {
+      const arr = getNotified()
+      if (!arr.includes(id)) localStorage.setItem(NOTIFIED_KEY, JSON.stringify([...arr, id]))
+    }
+    const check = async () => {
+      try {
+        const res = await api.get('/consultations/sessions/my_sessions/')
+        const sessions = Array.isArray(res.data) ? res.data : res.data.results || []
+        const now = Date.now()
+        const notified = getNotified()
+        for (const s of sessions) {
+          if (!['confirmed', 'rescheduled'].includes(s.status)) continue
+          if (notified.includes(s.id)) continue
+          const startMs = new Date(`${s.scheduled_date}T${s.start_time}`).getTime()
+          const diff = startMs - now
+          if (diff >= -2 * 60 * 1000 && diff <= 60 * 1000) {
+            addNotified(s.id)
+            setSessionModal(s)
+            break
+          }
+        }
+      } catch {}
+    }
+    check()
+    const id = setInterval(check, 60000)
+    return () => clearInterval(id)
+  }, [role])
 
   useEffect(() => {
     if (!notifOpen) return
@@ -413,6 +447,58 @@ function DashboardLayout() {
           <Outlet />
         </motion.main>
       </div>
+
+      {/* ── Session start popup ── */}
+      <AnimatePresence>
+        {sessionModal && (
+          <motion.div
+            key="session-start"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.88, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.88, opacity: 0 }}
+              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full max-w-sm rounded-2xl bg-white p-7 shadow-2xl text-center mx-4"
+            >
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-100">
+                <FaVideo className="text-2xl text-emerald-600" />
+              </div>
+              <div className="mb-1 flex items-center justify-center gap-2">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+                <p className="text-xs font-black uppercase tracking-widest text-emerald-600">Session Started</p>
+              </div>
+              <h2 className="mt-2 text-xl font-black text-slate-950">{sessionModal.title || sessionModal.session_type}</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                {sessionModal.scheduled_date} · {sessionModal.start_time} – {sessionModal.end_time}
+              </p>
+              <p className="mt-3 text-sm text-slate-600">
+                {role === 'consultant'
+                  ? 'Say hi to your client and get started!'
+                  : 'Say hi to your consultant and get started!'}
+              </p>
+              <div className="mt-6 flex gap-3">
+                <button
+                  onClick={() => setSessionModal(null)}
+                  className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-black text-slate-600 hover:bg-slate-50"
+                >
+                  Dismiss
+                </button>
+                <button
+                  onClick={() => { setSessionModal(null); navigate('/chat') }}
+                  className="flex-1 rounded-xl bg-emerald-600 py-2.5 text-sm font-black text-white hover:bg-emerald-500"
+                >
+                  Go to Chat
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Inactivity warning overlay ── */}
       <AnimatePresence>

@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import api from '../services/api'
 import { useAuth } from '../hooks/useAuth'
-import { FaPaperPlane, FaMagnifyingGlass, FaCircle } from 'react-icons/fa6'
+import { FaPaperPlane, FaMagnifyingGlass, FaCircle, FaClock, FaLock } from 'react-icons/fa6'
 
 /* ─── Helpers ───────────────────────────────────────────── */
 function displayName(p) {
@@ -122,9 +123,46 @@ export default function Chat() {
   const [loading, setLoading]                     = useState(true)
   const [searchQuery, setSearchQuery]             = useState('')
   const [sending, setSending]                     = useState(false)
+  const [sessionWindow, setSessionWindow]         = useState(null)
   const bottomRef = useRef(null)
 
   useEffect(() => { fetchConversations() }, [])
+
+  useEffect(() => {
+    if (!selectedConversation || !user) { setSessionWindow(null); return }
+    const others = selectedConversation.participants.filter(p => p.id !== user.id)
+    if (!others[0]) { setSessionWindow(null); return }
+    const otherId = others[0].id
+
+    const computeWindow = (sessions) => {
+      const relevant = sessions.find(s =>
+        ['confirmed', 'rescheduled'].includes(s.status) &&
+        (s.client?.id === otherId || s.consultant?.id === otherId)
+      )
+      if (!relevant) { setSessionWindow(null); return }
+      const now = Date.now()
+      const startMs = new Date(`${relevant.scheduled_date}T${relevant.start_time}`).getTime()
+      const endMs   = new Date(`${relevant.scheduled_date}T${relevant.end_time}`).getTime()
+      const lockMs  = endMs + 2 * 60 * 60 * 1000
+      if (now < startMs - 15 * 60 * 1000) setSessionWindow({ status: 'upcoming', session: relevant, startMs })
+      else if (now < endMs)               setSessionWindow({ status: 'active',   session: relevant, endMs })
+      else if (now < lockMs)              setSessionWindow({ status: 'ended',    session: relevant, endMs })
+      else                                setSessionWindow({ status: 'locked',   session: relevant })
+    }
+
+    let allSessions = []
+    const fetchAndCompute = async () => {
+      try {
+        const res = await api.get('/consultations/sessions/my_sessions/')
+        allSessions = Array.isArray(res.data) ? res.data : res.data.results || []
+        computeWindow(allSessions)
+      } catch {}
+    }
+
+    fetchAndCompute()
+    const id = setInterval(() => computeWindow(allSessions), 60000)
+    return () => clearInterval(id)
+  }, [selectedConversation, user])
 
   useEffect(() => {
     if (selectedConversation) fetchMessages(selectedConversation.id)
@@ -263,6 +301,47 @@ export default function Chat() {
             </div>
           </div>
 
+          {/* Session window banner */}
+          {sessionWindow && (() => {
+            const { status, session } = sessionWindow
+            if (status === 'upcoming') return (
+              <div className="mx-4 mt-3 flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5">
+                <FaClock className="shrink-0 text-blue-500" />
+                <p className="text-xs font-black text-blue-700">
+                  Session "{session.title}" starts at {session.start_time} on {session.scheduled_date} — chat open 15 min before
+                </p>
+              </div>
+            )
+            if (status === 'active') return (
+              <div className="mx-4 mt-3 flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5">
+                <span className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-emerald-500" />
+                <p className="text-xs font-black text-emerald-700">
+                  Session active — ends at {session.end_time}. Chat available until 2h after session.
+                </p>
+              </div>
+            )
+            if (status === 'ended') return (
+              <div className="mx-4 mt-3 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5">
+                <FaClock className="shrink-0 text-slate-400" />
+                <p className="text-xs font-black text-slate-500">
+                  Session ended. Chat closes 2 hours after session end time.
+                </p>
+              </div>
+            )
+            if (status === 'locked') return (
+              <div className="mx-4 mt-3 flex items-center justify-between gap-3 rounded-xl border border-rose-100 bg-rose-50 px-4 py-2.5">
+                <div className="flex items-center gap-2">
+                  <FaLock className="shrink-0 text-rose-400" />
+                  <p className="text-xs font-black text-rose-600">Session window closed. Book a new session to chat.</p>
+                </div>
+                <Link to="/consultants" className="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-black text-white hover:bg-blue-500">
+                  Book again
+                </Link>
+              </div>
+            )
+            return null
+          })()}
+
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-1">
             {messages.length === 0 ? (
@@ -305,22 +384,29 @@ export default function Chat() {
 
           {/* Input */}
           <form onSubmit={handleSend} className="border-t border-slate-100 px-4 py-3">
-            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100">
-              <input
-                type="text"
-                value={newMessage}
-                onChange={e => setNewMessage(e.target.value)}
-                placeholder="Type a message..."
-                className="flex-1 bg-transparent text-sm outline-none placeholder:text-slate-400"
-              />
-              <button
-                type="submit"
-                disabled={!newMessage.trim() || sending}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white transition hover:bg-indigo-700 disabled:opacity-40"
-              >
-                <FaPaperPlane className="text-xs" />
-              </button>
-            </div>
+            {sessionWindow?.status === 'locked' ? (
+              <div className="flex items-center justify-center gap-2 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3">
+                <FaLock className="text-rose-400 text-xs" />
+                <p className="text-xs font-black text-rose-500">Chat locked — session window closed</p>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100">
+                <input
+                  type="text"
+                  value={newMessage}
+                  onChange={e => setNewMessage(e.target.value)}
+                  placeholder="Type a message..."
+                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-slate-400"
+                />
+                <button
+                  type="submit"
+                  disabled={!newMessage.trim() || sending}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white transition hover:bg-indigo-700 disabled:opacity-40"
+                >
+                  <FaPaperPlane className="text-xs" />
+                </button>
+              </div>
+            )}
           </form>
         </div>
       ) : (
