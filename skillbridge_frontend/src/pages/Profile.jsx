@@ -483,6 +483,17 @@ export default function Profile() {
         last_name: res.data.last_name || '',
         timezone: res.data.timezone || 'Asia/Kolkata',
         is_online: res.data.is_online || false,
+        // From registration — all roles
+        phone: res.data.phone || '',
+        state: res.data.state || '',
+        identity: res.data.identity || '',
+        // From registration — freelancer/consultant
+        working_industry: res.data.working_industry || '',
+        experience_description: res.data.experience_description || '',
+        // From registration — client interests
+        interest1: res.data.interest1 || '',
+        interest2: res.data.interest2 || '',
+        interest3: res.data.interest3 || '',
         // Professional fields
         headline: res.data.headline || '',
         years_of_experience: res.data.years_of_experience || '',
@@ -553,6 +564,21 @@ export default function Profile() {
       if (formData.bio !== undefined) fd.append('bio', formData.bio)
       if (formData.location !== undefined) fd.append('location', formData.location)
       if (formData.hourly_rate !== '') fd.append('hourly_rate', formData.hourly_rate)
+      // Registration fields — all roles
+      fd.append('phone', formData.phone || '')
+      fd.append('state', formData.state || '')
+      fd.append('identity', formData.identity || '')
+      // Registration fields — freelancer/consultant/both
+      if (['consultant', 'freelancer', 'both'].includes(user?.role)) {
+        fd.append('working_industry', formData.working_industry || '')
+        fd.append('experience_description', formData.experience_description || '')
+      }
+      // Registration fields — client interests
+      if (user?.role === 'client') {
+        fd.append('interest1', formData.interest1 || '')
+        fd.append('interest2', formData.interest2 || '')
+        fd.append('interest3', formData.interest3 || '')
+      }
       const res = await api.put('/auth/profile/', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
       setProfile(res.data)
       setEditing(false)
@@ -723,6 +749,44 @@ export default function Profile() {
                     />
                   </div>
                 </div>
+                {/* Phone, State — all roles */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Phone</label>
+                    <input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={e => setFormData(p => ({ ...p, phone: e.target.value }))}
+                      placeholder="+91 9876543210"
+                      className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">State / Region</label>
+                    <input
+                      type="text"
+                      value={formData.state}
+                      onChange={e => setFormData(p => ({ ...p, state: e.target.value }))}
+                      placeholder="e.g. Maharashtra"
+                      className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                    />
+                  </div>
+                </div>
+                {/* Identity — all roles */}
+                <div>
+                  <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Identity / Entity Type</label>
+                  <select
+                    value={formData.identity}
+                    onChange={e => setFormData(p => ({ ...p, identity: e.target.value }))}
+                    className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                  >
+                    <option value="">Select…</option>
+                    {user?.role === 'client'
+                      ? ['Enterprise', 'MSME', 'Professional', 'Self-Employed', 'Individual'].map(v => <option key={v} value={v}>{v}</option>)
+                      : ['Consultant', 'Trainer', 'Mentor', 'Expert', 'Firm'].map(v => <option key={v} value={v}>{v}</option>)
+                    }
+                  </select>
+                </div>
                 <div>
                   <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Bio</label>
                   <textarea
@@ -814,6 +878,53 @@ export default function Profile() {
                     </div>
                   </>
                 )}
+                {/* Industry + Experience Description — freelancer/consultant/both */}
+                {['consultant', 'freelancer', 'both'].includes(user?.role) && (
+                  <>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Working Industry</label>
+                      <input
+                        type="text"
+                        value={formData.working_industry}
+                        onChange={e => setFormData(p => ({ ...p, working_industry: e.target.value }))}
+                        placeholder="e.g. FinTech, Healthcare, E-commerce"
+                        className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Experience Summary</label>
+                      <textarea
+                        value={formData.experience_description}
+                        onChange={e => setFormData(p => ({ ...p, experience_description: e.target.value }))}
+                        rows={3}
+                        placeholder="Brief summary of your professional background…"
+                        className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100 resize-none"
+                      />
+                    </div>
+                  </>
+                )}
+                {/* Interests — client only */}
+                {user?.role === 'client' && (
+                  <div>
+                    <label className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-600">Interests / Areas You Need Help With</label>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      {[
+                        { key: 'interest1', placeholder: 'e.g. Digital Marketing' },
+                        { key: 'interest2', placeholder: 'e.g. Legal & Compliance' },
+                        { key: 'interest3', placeholder: 'e.g. Financial Planning' },
+                      ].map(({ key, placeholder }) => (
+                        <input
+                          key={key}
+                          type="text"
+                          value={formData[key]}
+                          onChange={e => setFormData(p => ({ ...p, [key]: e.target.value }))}
+                          placeholder={placeholder}
+                          className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {['consultant', 'both'].includes(user?.role) && (
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -873,20 +984,64 @@ export default function Profile() {
                 </div>
               </form>
             ) : (
-              <div className="grid grid-cols-2 gap-5">
-                {[
-                  { label: 'Username',   val: profile.username },
-                  { label: 'Email',      val: profile.email },
-                  { label: 'First Name', val: profile.first_name || '—' },
-                  { label: 'Last Name',  val: profile.last_name  || '—' },
-                  { label: 'Role',       val: profile.role, cap: true },
-                  { label: 'Identity',   val: profile.identity || '—' },
-                ].map(({ label, val, cap }) => (
-                  <div key={label}>
-                    <p className="text-xs font-black uppercase tracking-wide text-slate-400">{label}</p>
-                    <p className={`mt-1 font-semibold text-slate-900 ${cap ? 'capitalize' : ''}`}>{val}</p>
+              <div className="space-y-5">
+                <div className="grid grid-cols-2 gap-5">
+                  {[
+                    { label: 'Username',   val: profile.username },
+                    { label: 'Email',      val: profile.email },
+                    { label: 'First Name', val: profile.first_name || '—' },
+                    { label: 'Last Name',  val: profile.last_name  || '—' },
+                    { label: 'Role',       val: profile.role === 'both' ? 'Freelancer + Consultant' : profile.role, cap: true },
+                    { label: 'Identity',   val: profile.identity || '—' },
+                    profile.phone && { label: 'Phone', val: profile.phone },
+                    profile.state && { label: 'State / Region', val: profile.state },
+                  ].filter(Boolean).map(({ label, val, cap }) => (
+                    <div key={label}>
+                      <p className="text-xs font-black uppercase tracking-wide text-slate-400">{label}</p>
+                      <p className={`mt-1 font-semibold text-slate-900 ${cap ? 'capitalize' : ''}`}>{val}</p>
+                    </div>
+                  ))}
+                </div>
+                {profile.bio && (
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-wide text-slate-400">Bio</p>
+                    <p className="mt-1 text-sm text-slate-700 leading-relaxed">{profile.bio}</p>
                   </div>
-                ))}
+                )}
+                {(profile.location || profile.hourly_rate) && (
+                  <div className="grid grid-cols-2 gap-5">
+                    {profile.location && <div><p className="text-xs font-black uppercase tracking-wide text-slate-400">Location</p><p className="mt-1 font-semibold text-slate-900">{profile.location}</p></div>}
+                    {profile.hourly_rate && <div><p className="text-xs font-black uppercase tracking-wide text-slate-400">Hourly Rate</p><p className="mt-1 font-semibold text-slate-900">₹{Number(profile.hourly_rate).toLocaleString('en-IN')}/hr</p></div>}
+                  </div>
+                )}
+                {/* Freelancer/Consultant: working industry + experience */}
+                {['consultant', 'freelancer', 'both'].includes(profile.role) && (profile.working_industry || profile.experience_description) && (
+                  <div className="space-y-3 border-t border-slate-100 pt-4">
+                    {profile.working_industry && (
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-wide text-slate-400">Working Industry</p>
+                        <p className="mt-1 font-semibold text-slate-900">{profile.working_industry}</p>
+                      </div>
+                    )}
+                    {profile.experience_description && (
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-wide text-slate-400">Experience Summary</p>
+                        <p className="mt-1 text-sm text-slate-700 leading-relaxed">{profile.experience_description}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {/* Client: interests */}
+                {profile.role === 'client' && (profile.interest1 || profile.interest2 || profile.interest3) && (
+                  <div className="border-t border-slate-100 pt-4">
+                    <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-400">Areas of Interest</p>
+                    <div className="flex flex-wrap gap-2">
+                      {[profile.interest1, profile.interest2, profile.interest3].filter(Boolean).map((interest, i) => (
+                        <span key={i} className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">{interest}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
