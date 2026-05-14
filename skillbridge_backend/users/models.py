@@ -57,6 +57,24 @@ class User(AbstractUser):
     kyc_submitted_at = models.DateTimeField(blank=True, null=True)
     kyc_rejection_reason = models.TextField(blank=True, null=True)
 
+    # Professional profile (consultant/freelancer)
+    headline = models.CharField(max_length=255, blank=True, null=True)
+    years_of_experience = models.PositiveIntegerField(null=True, blank=True)
+    what_i_help_with = models.TextField(blank=True, null=True)
+    ideal_client = models.TextField(blank=True, null=True)
+    languages = models.CharField(max_length=255, blank=True, null=True)
+    response_time_hours = models.IntegerField(default=24)
+    preferred_communication = models.CharField(
+        max_length=20, blank=True, null=True,
+        choices=[('chat', 'Chat'), ('email', 'Email'), ('call', 'Call')]
+    )
+
+    # Social & external links
+    linkedin_url = models.URLField(blank=True, null=True)
+    twitter_url = models.URLField(blank=True, null=True)
+    github_url = models.URLField(blank=True, null=True)
+    website_url = models.URLField(blank=True, null=True)
+
     # Availability & presence
     timezone = models.CharField(max_length=50, default='Asia/Kolkata')
     is_online = models.BooleanField(default=False)

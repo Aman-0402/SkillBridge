@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import ConsultantAvailability, ConsultationSession, Review
+from .models import ConsultantAvailability, ConsultationSession, Review, ConsultantPackage
 from users.serializers import UserSerializer
 
 class ConsultantAvailabilitySerializer(serializers.ModelSerializer):
@@ -32,3 +32,10 @@ class ConsultationSessionCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = ConsultationSession
         fields = ['consultant', 'session_type', 'title', 'description', 'scheduled_date', 'start_time', 'end_time', 'session_cost']
+
+
+class ConsultantPackageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ConsultantPackage
+        fields = ['id', 'name', 'session_type', 'duration_minutes', 'price', 'description', 'is_active', 'created_at']
+        read_only_fields = ['id', 'created_at']

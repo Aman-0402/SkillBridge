@@ -67,6 +67,30 @@ class ConsultationSession(models.Model):
         return f"{self.client.username} - {self.consultant.username} ({self.scheduled_date})"
 
 
+class ConsultantPackage(models.Model):
+    SESSION_TYPE_CHOICES = (
+        ('call', 'Phone Call'),
+        ('video', 'Video Call'),
+        ('email', 'Email'),
+        ('in_person', 'In Person'),
+    )
+
+    consultant = models.ForeignKey(User, on_delete=models.CASCADE, related_name='packages')
+    name = models.CharField(max_length=100)
+    session_type = models.CharField(max_length=20, choices=SESSION_TYPE_CHOICES)
+    duration_minutes = models.PositiveIntegerField()
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['price']
+
+    def __str__(self):
+        return f"{self.consultant.username} — {self.name} ({self.duration_minutes}min)"
+
+
 class Review(models.Model):
     session = models.OneToOneField(ConsultationSession, on_delete=models.CASCADE, related_name='review')
     reviewer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews_given')

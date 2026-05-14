@@ -3,8 +3,17 @@ import { Link } from 'react-router-dom'
 import {
   FaMagnifyingGlass, FaUserTie, FaIndianRupeeSign, FaStar,
   FaCircleCheck, FaCircle, FaCalendarCheck, FaXmark,
+  FaSliders, FaChevronDown,
 } from 'react-icons/fa6'
 import api from '../services/api'
+
+const SESSION_TYPES = [
+  { value: '', label: 'Any' },
+  { value: 'call', label: 'Phone Call' },
+  { value: 'video', label: 'Video Call' },
+  { value: 'email', label: 'Email' },
+  { value: 'in_person', label: 'In Person' },
+]
 
 function ConsultantCardSkeleton() {
   return (
@@ -52,7 +61,30 @@ export default function Consultants() {
   const [search, setSearch] = useState('')
   const [onlineOnly, setOnlineOnly] = useState(false)
   const [availableToday, setAvailableToday] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [minRate, setMinRate] = useState('')
+  const [maxRate, setMaxRate] = useState('')
+  const [language, setLanguage] = useState('')
+  const [sessionType, setSessionType] = useState('')
+  const [minRating, setMinRating] = useState('')
+  const [experienceMin, setExperienceMin] = useState('')
   const debounceRef = useRef(null)
+
+  const buildParams = (overrides = {}) => {
+    const base = {
+      search: search || undefined,
+      online: onlineOnly ? 'true' : undefined,
+      available_today: availableToday ? 'true' : undefined,
+      min_rate: minRate || undefined,
+      max_rate: maxRate || undefined,
+      language: language || undefined,
+      session_type: sessionType || undefined,
+      min_rating: minRating || undefined,
+      experience_min: experienceMin || undefined,
+    }
+    const merged = { ...base, ...overrides }
+    return Object.fromEntries(Object.entries(merged).filter(([, v]) => v !== undefined))
+  }
 
   const fetchConsultants = useCallback((params = {}) => {
     setLoading(true)
@@ -66,41 +98,48 @@ export default function Consultants() {
     fetchConsultants()
   }, [fetchConsultants])
 
-  const triggerSearch = (searchVal, online, today) => {
-    const params = {}
-    if (searchVal) params.search = searchVal
-    if (online) params.online = 'true'
-    if (today) params.available_today = 'true'
-    fetchConsultants(params)
+  const triggerSearch = (overrides = {}) => {
+    fetchConsultants(buildParams(overrides))
   }
 
   const handleSearchChange = (e) => {
     const val = e.target.value
     setSearch(val)
     clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => triggerSearch(val, onlineOnly, availableToday), 350)
+    debounceRef.current = setTimeout(() => fetchConsultants(buildParams({ search: val || undefined })), 350)
   }
 
   const handleOnlineToggle = () => {
     const next = !onlineOnly
     setOnlineOnly(next)
-    triggerSearch(search, next, availableToday)
+    fetchConsultants(buildParams({ online: next ? 'true' : undefined }))
   }
 
   const handleTodayToggle = () => {
     const next = !availableToday
     setAvailableToday(next)
-    triggerSearch(search, onlineOnly, next)
+    fetchConsultants(buildParams({ available_today: next ? 'true' : undefined }))
+  }
+
+  const applyAdvanced = () => {
+    fetchConsultants(buildParams())
   }
 
   const clearFilters = () => {
     setSearch('')
     setOnlineOnly(false)
     setAvailableToday(false)
+    setMinRate('')
+    setMaxRate('')
+    setLanguage('')
+    setSessionType('')
+    setMinRating('')
+    setExperienceMin('')
     fetchConsultants()
   }
 
-  const hasFilters = search || onlineOnly || availableToday
+  const hasAdvancedFilters = minRate || maxRate || language || sessionType || minRating || experienceMin
+  const hasFilters = search || onlineOnly || availableToday || hasAdvancedFilters
 
   return (
     <div className="space-y-6">
@@ -123,13 +162,11 @@ export default function Consultants() {
               className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={handleOnlineToggle}
               className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-black transition ${
-                onlineOnly
-                  ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
-                  : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:text-emerald-600'
+                onlineOnly ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:text-emerald-600'
               }`}
             >
               <FaCircle className={`text-[8px] ${onlineOnly ? 'text-emerald-500' : 'text-slate-300'}`} />
@@ -138,36 +175,95 @@ export default function Consultants() {
             <button
               onClick={handleTodayToggle}
               className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-black transition ${
-                availableToday
-                  ? 'border-blue-400 bg-blue-50 text-blue-700'
-                  : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-600'
+                availableToday ? 'border-blue-400 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-600'
               }`}
             >
               <FaCalendarCheck className="text-xs" />
-              Available Today
+              Today
+            </button>
+            <button
+              onClick={() => setShowAdvanced(v => !v)}
+              className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-black transition ${
+                showAdvanced || hasAdvancedFilters ? 'border-indigo-400 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+              }`}
+            >
+              <FaSliders className="text-xs" />
+              Filters
+              {hasAdvancedFilters && <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-[9px] font-black text-white">!</span>}
+              <FaChevronDown className={`text-[10px] transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
             </button>
             {hasFilters && (
-              <button
-                onClick={clearFilters}
-                className="flex items-center gap-1.5 rounded-xl border border-rose-200 bg-white px-3 py-2.5 text-sm font-black text-rose-500 hover:bg-rose-50"
-              >
+              <button onClick={clearFilters} className="flex items-center gap-1.5 rounded-xl border border-rose-200 bg-white px-3 py-2.5 text-sm font-black text-rose-500 hover:bg-rose-50">
                 <FaXmark /> Clear
               </button>
             )}
           </div>
         </div>
 
+        {/* Advanced filter panel */}
+        {showAdvanced && (
+          <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-4 space-y-4">
+            <p className="text-xs font-black uppercase tracking-wide text-indigo-600">Advanced Filters</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              <div>
+                <label className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500">Min Rate (₹/hr)</label>
+                <input type="number" min="0" value={minRate} onChange={e => setMinRate(e.target.value)} placeholder="e.g. 500" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+              </div>
+              <div>
+                <label className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500">Max Rate (₹/hr)</label>
+                <input type="number" min="0" value={maxRate} onChange={e => setMaxRate(e.target.value)} placeholder="e.g. 5000" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+              </div>
+              <div>
+                <label className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500">Language</label>
+                <input type="text" value={language} onChange={e => setLanguage(e.target.value)} placeholder="e.g. English" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+              </div>
+              <div>
+                <label className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500">Session Type</label>
+                <select value={sessionType} onChange={e => setSessionType(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+                  {SESSION_TYPES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500">Min Rating</label>
+                <div className="flex gap-1">
+                  {[1,2,3,4,5].map(star => (
+                    <button key={star} type="button" onClick={() => setMinRating(minRating == star ? '' : String(star))}
+                      className={`flex-1 rounded-lg border py-1.5 text-xs font-black transition ${minRating == star ? 'border-amber-400 bg-amber-50 text-amber-700' : 'border-slate-200 bg-white text-slate-400 hover:border-amber-300'}`}>
+                      {star}★
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500">Experience (yrs)</label>
+                <select value={experienceMin} onChange={e => setExperienceMin(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+                  <option value="">Any</option>
+                  <option value="1">1+ years</option>
+                  <option value="3">3+ years</option>
+                  <option value="5">5+ years</option>
+                  <option value="10">10+ years</option>
+                </select>
+              </div>
+            </div>
+            <button onClick={applyAdvanced} className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-black text-white hover:bg-indigo-500">
+              Apply Filters
+            </button>
+          </div>
+        )}
+
         {/* Active filter chips */}
         {hasFilters && (
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="text-slate-400">Filters:</span>
-            {search && (
-              <span className="rounded-full bg-slate-100 px-2.5 py-1 font-black text-slate-600">
-                "{search}"
-              </span>
-            )}
+            <span className="text-slate-400">Active:</span>
+            {search && <span className="rounded-full bg-slate-100 px-2.5 py-1 font-black text-slate-600">"{search}"</span>}
             {onlineOnly && <span className="rounded-full bg-emerald-100 px-2.5 py-1 font-black text-emerald-700">Online now</span>}
             {availableToday && <span className="rounded-full bg-blue-100 px-2.5 py-1 font-black text-blue-700">Available today</span>}
+            {minRate && <span className="rounded-full bg-indigo-100 px-2.5 py-1 font-black text-indigo-700">Min ₹{minRate}</span>}
+            {maxRate && <span className="rounded-full bg-indigo-100 px-2.5 py-1 font-black text-indigo-700">Max ₹{maxRate}</span>}
+            {language && <span className="rounded-full bg-indigo-100 px-2.5 py-1 font-black text-indigo-700">Lang: {language}</span>}
+            {sessionType && <span className="rounded-full bg-indigo-100 px-2.5 py-1 font-black text-indigo-700">{SESSION_TYPES.find(s => s.value === sessionType)?.label}</span>}
+            {minRating && <span className="rounded-full bg-amber-100 px-2.5 py-1 font-black text-amber-700">{minRating}★+</span>}
+            {experienceMin && <span className="rounded-full bg-indigo-100 px-2.5 py-1 font-black text-indigo-700">{experienceMin}+ yrs</span>}
           </div>
         )}
       </div>

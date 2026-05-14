@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import action, api_view, permission_classes
 from .models import User, Skill, Experience, ExpertiseTag
-from .serializers import RegisterSerializer, ProfileSerializer, SkillSerializer, ExperienceSerializer, UserSerializer, KYCSubmitSerializer, ExpertiseTagSerializer, FreelancerListSerializer
+from .serializers import RegisterSerializer, ProfileSerializer, SkillSerializer, ExperienceSerializer, UserSerializer, KYCSubmitSerializer, ExpertiseTagSerializer, FreelancerListSerializer, PublicConsultantSerializer
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -72,8 +72,12 @@ class ExperienceViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
 class PublicProfileView(generics.RetrieveAPIView):
-    queryset = User.objects.all()
-    serializer_class = ProfileSerializer
+    queryset = User.objects.prefetch_related(
+        'skills', 'expertise_tags', 'experiences',
+        'consultation_availability', 'packages',
+        'consultation_sessions_as_consultant__review__reviewer',
+    )
+    serializer_class = PublicConsultantSerializer
     permission_classes = [AllowAny]
     lookup_field = 'username'
 

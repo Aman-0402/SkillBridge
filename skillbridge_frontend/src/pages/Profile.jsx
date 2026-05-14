@@ -3,10 +3,193 @@ import {
   FaUser, FaEnvelope, FaPhone, FaLocationDot, FaBriefcase,
   FaShieldHalved, FaCircleCheck, FaClock, FaXmark, FaPen,
   FaKey, FaIdCard, FaEye, FaEyeSlash, FaTag, FaPlus,
+  FaLinkedin, FaGithub, FaXTwitter, FaGlobe, FaLink,
+  FaTrash, FaBoxOpen, FaLightbulb,
 } from 'react-icons/fa6'
 import Swal from 'sweetalert2'
 import api from '../services/api'
 import { useAuth } from '../hooks/useAuth'
+
+/* ─── Profile Strength Meter ───────────────────────────────── */
+function ProfileStrengthMeter({ pct }) {
+  if (pct == null) return null
+  const color = pct < 40 ? 'bg-rose-500' : pct < 70 ? 'bg-amber-400' : 'bg-emerald-500'
+  const label = pct < 40 ? 'Getting started' : pct < 70 ? 'Looking good' : pct < 100 ? 'Almost complete' : 'Complete!'
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-sm font-black text-slate-950">Profile Strength</p>
+        <span className={`text-xs font-black px-2 py-0.5 rounded-full ${pct >= 70 ? 'bg-emerald-100 text-emerald-700' : pct >= 40 ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'}`}>
+          {pct}% — {label}
+        </span>
+      </div>
+      <div className="h-2 w-full rounded-full bg-slate-100">
+        <div className={`h-2 rounded-full transition-all duration-700 ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+      {pct < 100 && (
+        <p className="mt-2 text-xs text-slate-400">
+          {pct < 40 ? 'Add bio, location, skills, and hourly rate to boost visibility.' :
+           pct < 70 ? 'Complete KYC verification and add expertise tags.' :
+           'Add consultation packages and social links to reach 100%.'}
+        </p>
+      )}
+    </div>
+  )
+}
+
+/* ─── Packages Section ─────────────────────────────────────── */
+const SESSION_TYPE_OPTS = [
+  { value: 'call', label: 'Phone Call' },
+  { value: 'video', label: 'Video Call' },
+  { value: 'email', label: 'Email' },
+  { value: 'in_person', label: 'In Person' },
+]
+
+function PackagesSection() {
+  const [packages, setPackages] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [editId, setEditId] = useState(null)
+  const [form, setForm] = useState({ name: '', session_type: 'video', duration_minutes: 60, price: '', description: '' })
+
+  const fetchPkgs = () => {
+    api.get('/consultations/packages/my_packages/')
+      .then(res => setPackages(Array.isArray(res.data) ? res.data : []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => { fetchPkgs() }, [])
+
+  const openAdd = () => {
+    setEditId(null)
+    setForm({ name: '', session_type: 'video', duration_minutes: 60, price: '', description: '' })
+    setShowForm(true)
+  }
+
+  const openEdit = (pkg) => {
+    setEditId(pkg.id)
+    setForm({ name: pkg.name, session_type: pkg.session_type, duration_minutes: pkg.duration_minutes, price: pkg.price, description: pkg.description })
+    setShowForm(true)
+  }
+
+  const handleSave = async (e) => {
+    e.preventDefault()
+    if (!form.name.trim() || !form.price) return
+    setSaving(true)
+    try {
+      if (editId) {
+        const res = await api.patch(`/consultations/packages/${editId}/`, form)
+        setPackages(prev => prev.map(p => p.id === editId ? res.data : p))
+      } else {
+        const res = await api.post('/consultations/packages/', form)
+        setPackages(prev => [...prev, res.data])
+      }
+      setShowForm(false)
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Failed', text: err.response?.data?.detail || 'Could not save package.', timer: 2000, showConfirmButton: false })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDelete = async (id) => {
+    const r = await Swal.fire({ title: 'Delete package?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'Delete' })
+    if (!r.isConfirmed) return
+    try {
+      await api.delete(`/consultations/packages/${id}/`)
+      setPackages(prev => prev.filter(p => p.id !== id))
+    } catch {
+      Swal.fire({ icon: 'error', title: 'Failed', timer: 1500, showConfirmButton: false })
+    }
+  }
+
+  const toggleActive = async (pkg) => {
+    try {
+      const res = await api.patch(`/consultations/packages/${pkg.id}/`, { is_active: !pkg.is_active })
+      setPackages(prev => prev.map(p => p.id === pkg.id ? res.data : p))
+    } catch {}
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="mb-4 flex items-center gap-2">
+        <FaBoxOpen className="text-indigo-500" />
+        <p className="font-black text-slate-950">Consultation Packages</p>
+        <span className="ml-auto text-xs text-slate-400">Define what you offer</span>
+        <button onClick={openAdd} className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-black text-white hover:bg-indigo-500">
+          <FaPlus className="text-[10px]" /> Add Package
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="space-y-2">{[1,2].map(i => <div key={i} className="h-16 animate-pulse rounded-xl bg-slate-100" />)}</div>
+      ) : packages.length === 0 && !showForm ? (
+        <p className="text-sm text-slate-400">No packages yet. Add offerings like "Quick Call 30min — ₹999" to attract clients.</p>
+      ) : (
+        <div className="space-y-3">
+          {packages.map(pkg => (
+            <div key={pkg.id} className={`flex items-center gap-3 rounded-xl border p-3 transition ${pkg.is_active ? 'border-slate-200 bg-white' : 'border-slate-100 bg-slate-50 opacity-60'}`}>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-black text-slate-900 text-sm">{pkg.name}</p>
+                  <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700 capitalize">{pkg.session_type.replace('_', ' ')}</span>
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">{pkg.duration_minutes}min</span>
+                </div>
+                {pkg.description && <p className="mt-0.5 text-xs text-slate-500 line-clamp-1">{pkg.description}</p>}
+              </div>
+              <p className="shrink-0 font-black text-emerald-700 text-sm">₹{Number(pkg.price).toLocaleString('en-IN')}</p>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button onClick={() => toggleActive(pkg)} className={`rounded-lg px-2 py-1 text-[10px] font-black transition ${pkg.is_active ? 'bg-emerald-100 text-emerald-700 hover:bg-rose-100 hover:text-rose-700' : 'bg-slate-100 text-slate-500 hover:bg-emerald-100 hover:text-emerald-700'}`}>
+                  {pkg.is_active ? 'Active' : 'Inactive'}
+                </button>
+                <button onClick={() => openEdit(pkg)} className="rounded-lg p-1.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition"><FaPen className="text-xs" /></button>
+                <button onClick={() => handleDelete(pkg.id)} className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition"><FaTrash className="text-xs" /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showForm && (
+        <form onSubmit={handleSave} className="mt-4 space-y-3 rounded-xl border border-indigo-100 bg-indigo-50/40 p-4">
+          <p className="text-xs font-black uppercase tracking-wide text-indigo-700">{editId ? 'Edit Package' : 'New Package'}</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-black text-slate-600">Package Name *</label>
+              <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Strategy Session" required className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-black text-slate-600">Session Type *</label>
+              <select value={form.session_type} onChange={e => setForm(p => ({ ...p, session_type: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+                {SESSION_TYPE_OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-black text-slate-600">Duration (minutes) *</label>
+              <input type="number" min="15" max="480" value={form.duration_minutes} onChange={e => setForm(p => ({ ...p, duration_minutes: Number(e.target.value) }))} required className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-black text-slate-600">Price (₹) *</label>
+              <input type="number" min="0" step="1" value={form.price} onChange={e => setForm(p => ({ ...p, price: e.target.value }))} required placeholder="499" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+            </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-black text-slate-600">Description</label>
+            <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} rows={2} placeholder="What's included in this session?" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 resize-none" />
+          </div>
+          <div className="flex gap-2">
+            <button type="submit" disabled={saving} className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-black text-white hover:bg-indigo-500 disabled:opacity-60">
+              {saving ? 'Saving…' : 'Save Package'}
+            </button>
+            <button type="button" onClick={() => setShowForm(false)} className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-black text-slate-600 hover:bg-slate-50">Cancel</button>
+          </div>
+        </form>
+      )}
+    </div>
+  )
+}
 
 /* ─── KYC status badge ──────────────────────────────────── */
 const KYC_BADGE = {
@@ -300,6 +483,25 @@ export default function Profile() {
         last_name: res.data.last_name || '',
         timezone: res.data.timezone || 'Asia/Kolkata',
         is_online: res.data.is_online || false,
+        // Professional fields
+        headline: res.data.headline || '',
+        years_of_experience: res.data.years_of_experience || '',
+        languages: res.data.languages || '',
+        preferred_communication: res.data.preferred_communication || '',
+        response_time_hours: res.data.response_time_hours || 24,
+        // About
+        what_i_help_with: res.data.what_i_help_with || '',
+        ideal_client: res.data.ideal_client || '',
+        // Social links
+        linkedin_url: res.data.linkedin_url || '',
+        twitter_url: res.data.twitter_url || '',
+        github_url: res.data.github_url || '',
+        website_url: res.data.website_url || '',
+        portfolio_url: res.data.portfolio_url || '',
+        // Bio & location
+        bio: res.data.bio || '',
+        location: res.data.location || '',
+        hourly_rate: res.data.hourly_rate || '',
       })
       setRoleChoice(res.data.role)
       if (res.data.profile_image) setImagePreview(res.data.profile_image)
@@ -335,6 +537,22 @@ export default function Profile() {
       fd.append('is_online', formData.is_online ? 'true' : 'false')
       if (roleChoice && roleChoice !== profile.role) fd.append('role', roleChoice)
       if (profileImage) fd.append('profile_image', profileImage)
+      // Professional fields
+      if (formData.headline !== undefined) fd.append('headline', formData.headline)
+      if (formData.years_of_experience !== '') fd.append('years_of_experience', formData.years_of_experience)
+      if (formData.languages !== undefined) fd.append('languages', formData.languages)
+      if (formData.preferred_communication !== undefined) fd.append('preferred_communication', formData.preferred_communication)
+      if (formData.response_time_hours !== '') fd.append('response_time_hours', formData.response_time_hours)
+      if (formData.what_i_help_with !== undefined) fd.append('what_i_help_with', formData.what_i_help_with)
+      if (formData.ideal_client !== undefined) fd.append('ideal_client', formData.ideal_client)
+      if (formData.linkedin_url !== undefined) fd.append('linkedin_url', formData.linkedin_url)
+      if (formData.twitter_url !== undefined) fd.append('twitter_url', formData.twitter_url)
+      if (formData.github_url !== undefined) fd.append('github_url', formData.github_url)
+      if (formData.website_url !== undefined) fd.append('website_url', formData.website_url)
+      if (formData.portfolio_url !== undefined) fd.append('portfolio_url', formData.portfolio_url)
+      if (formData.bio !== undefined) fd.append('bio', formData.bio)
+      if (formData.location !== undefined) fd.append('location', formData.location)
+      if (formData.hourly_rate !== '') fd.append('hourly_rate', formData.hourly_rate)
       const res = await api.put('/auth/profile/', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
       setProfile(res.data)
       setEditing(false)
@@ -397,6 +615,8 @@ export default function Profile() {
         <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">Account</p>
         <h1 className="mt-1 text-2xl font-black text-slate-950">My Profile</h1>
       </div>
+
+      <ProfileStrengthMeter pct={profile.profile_completion_pct} />
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* ── Left: avatar card ── */}
@@ -503,6 +723,39 @@ export default function Profile() {
                     />
                   </div>
                 </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Bio</label>
+                  <textarea
+                    value={formData.bio}
+                    onChange={e => setFormData(p => ({ ...p, bio: e.target.value }))}
+                    rows={3}
+                    placeholder="Tell clients about yourself…"
+                    className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100 resize-none"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Location</label>
+                    <input
+                      type="text"
+                      value={formData.location}
+                      onChange={e => setFormData(p => ({ ...p, location: e.target.value }))}
+                      placeholder="City, Country"
+                      className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Hourly Rate (₹)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.hourly_rate}
+                      onChange={e => setFormData(p => ({ ...p, hourly_rate: e.target.value }))}
+                      placeholder="e.g. 1500"
+                      className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                    />
+                  </div>
+                </div>
                 {['consultant', 'freelancer', 'both'].includes(user?.role) && (
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -533,6 +786,48 @@ export default function Profile() {
                           <p className="text-xs text-slate-400">Show green dot on your profile</p>
                         </div>
                       </label>
+                    </div>
+                  </div>
+                )}
+                {/* Consultant/Freelancer professional fields */}
+                {['consultant', 'freelancer', 'both'].includes(user?.role) && (
+                  <>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Professional Headline</label>
+                      <input
+                        type="text"
+                        value={formData.headline}
+                        onChange={e => setFormData(p => ({ ...p, headline: e.target.value }))}
+                        placeholder="e.g. Senior React Developer | 8 yrs | Startup Advisor"
+                        className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Years of Experience</label>
+                        <input type="number" min="0" max="50" value={formData.years_of_experience} onChange={e => setFormData(p => ({ ...p, years_of_experience: e.target.value }))} placeholder="e.g. 8" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100" />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Languages Spoken</label>
+                        <input type="text" value={formData.languages} onChange={e => setFormData(p => ({ ...p, languages: e.target.value }))} placeholder="e.g. English, Hindi" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100" />
+                      </div>
+                    </div>
+                  </>
+                )}
+                {['consultant', 'both'].includes(user?.role) && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Preferred Communication</label>
+                      <select value={formData.preferred_communication} onChange={e => setFormData(p => ({ ...p, preferred_communication: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
+                        <option value="">Select…</option>
+                        <option value="chat">Chat</option>
+                        <option value="email">Email</option>
+                        <option value="call">Call</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Response Time (hours)</label>
+                      <input type="number" min="1" max="168" value={formData.response_time_hours} onChange={e => setFormData(p => ({ ...p, response_time_hours: e.target.value }))} placeholder="24" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100" />
                     </div>
                   </div>
                 )}
@@ -598,6 +893,92 @@ export default function Profile() {
 
           {/* Expertise tags — consultants, freelancers & both */}
           {['consultant', 'freelancer', 'both'].includes(user?.role) && <ExpertiseTagsSection />}
+
+          {/* About Your Consulting — consultant & both */}
+          {['consultant', 'both'].includes(user?.role) && editing && (
+            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="mb-4 flex items-center gap-2">
+                <FaLightbulb className="text-amber-500" />
+                <p className="font-black text-slate-950">About Your Consulting</p>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">What I Help With</label>
+                  <textarea value={formData.what_i_help_with} onChange={e => setFormData(p => ({ ...p, what_i_help_with: e.target.value }))} rows={3} placeholder="Describe the problems you solve for clients…" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100 resize-none" />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Ideal Client</label>
+                  <textarea value={formData.ideal_client} onChange={e => setFormData(p => ({ ...p, ideal_client: e.target.value }))} rows={2} placeholder="Describe your ideal client (industry, stage, challenges)…" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100 resize-none" />
+                </div>
+              </div>
+            </div>
+          )}
+          {['consultant', 'both'].includes(user?.role) && !editing && (profile.what_i_help_with || profile.ideal_client) && (
+            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="mb-3 flex items-center gap-2">
+                <FaLightbulb className="text-amber-500" />
+                <p className="font-black text-slate-950">About Your Consulting</p>
+              </div>
+              {profile.what_i_help_with && (
+                <div className="mb-3">
+                  <p className="text-xs font-black uppercase tracking-wide text-slate-400 mb-1">What I Help With</p>
+                  <p className="text-sm text-slate-700 leading-relaxed">{profile.what_i_help_with}</p>
+                </div>
+              )}
+              {profile.ideal_client && (
+                <div>
+                  <p className="text-xs font-black uppercase tracking-wide text-slate-400 mb-1">Ideal Client</p>
+                  <p className="text-sm text-slate-700 leading-relaxed">{profile.ideal_client}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Social & External Links */}
+          {['consultant', 'freelancer', 'both'].includes(user?.role) && editing && (
+            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="mb-4 flex items-center gap-2">
+                <FaLink className="text-slate-500" />
+                <p className="font-black text-slate-950">Social & Links</p>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {[
+                  { key: 'linkedin_url', label: 'LinkedIn', icon: FaLinkedin, color: 'text-blue-600', placeholder: 'https://linkedin.com/in/…' },
+                  { key: 'twitter_url', label: 'Twitter / X', icon: FaXTwitter, color: 'text-slate-900', placeholder: 'https://twitter.com/…' },
+                  { key: 'github_url', label: 'GitHub', icon: FaGithub, color: 'text-slate-700', placeholder: 'https://github.com/…' },
+                  { key: 'website_url', label: 'Website', icon: FaGlobe, color: 'text-emerald-600', placeholder: 'https://yoursite.com' },
+                  { key: 'portfolio_url', label: 'Portfolio', icon: FaLink, color: 'text-indigo-600', placeholder: 'https://portfolio.com' },
+                ].map(({ key, label, icon: Icon, color, placeholder }) => (
+                  <div key={key}>
+                    <label className="mb-1 flex items-center gap-1.5 text-xs font-black uppercase tracking-wide text-slate-600">
+                      <Icon className={`text-sm ${color}`} /> {label}
+                    </label>
+                    <input type="url" value={formData[key]} onChange={e => setFormData(p => ({ ...p, [key]: e.target.value }))} placeholder={placeholder} className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {['consultant', 'freelancer', 'both'].includes(user?.role) && !editing && (
+            profile.linkedin_url || profile.twitter_url || profile.github_url || profile.website_url || profile.portfolio_url
+          ) && (
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="mb-3 flex items-center gap-2">
+                <FaLink className="text-slate-500" />
+                <p className="font-black text-slate-950">Social & Links</p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {profile.linkedin_url && <a href={profile.linkedin_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-100"><FaLinkedin /> LinkedIn</a>}
+                {profile.twitter_url && <a href={profile.twitter_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"><FaXTwitter /> Twitter</a>}
+                {profile.github_url && <a href={profile.github_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"><FaGithub /> GitHub</a>}
+                {profile.website_url && <a href={profile.website_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"><FaGlobe /> Website</a>}
+                {profile.portfolio_url && <a href={profile.portfolio_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"><FaLink /> Portfolio</a>}
+              </div>
+            </div>
+          )}
+
+          {/* Consultation Packages — consultant & both */}
+          {['consultant', 'both'].includes(user?.role) && <PackagesSection />}
 
           {/* KYC Section — hidden for admin (they approve KYC, don't submit it) */}
           {user?.role !== 'admin' && <KYCSection profile={profile} onRefresh={fetchProfile} />}
