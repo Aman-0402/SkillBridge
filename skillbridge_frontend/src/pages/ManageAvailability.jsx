@@ -10,15 +10,27 @@ import { useAuth } from '../hooks/useAuth'
 
 /* ─── Status badge ─────────────────────────────────────── */
 const STATUS_STYLES = {
-  pending:   'bg-amber-50 text-amber-700',
-  confirmed: 'bg-blue-50 text-blue-700',
-  completed: 'bg-emerald-50 text-emerald-700',
-  cancelled: 'bg-rose-50 text-rose-600',
+  pending:            'bg-amber-50 text-amber-700',
+  awaiting_approval:  'bg-violet-50 text-violet-700',
+  confirmed:          'bg-blue-50 text-blue-700',
+  in_progress:        'bg-cyan-50 text-cyan-700',
+  completed:          'bg-emerald-50 text-emerald-700',
+  cancelled:          'bg-rose-50 text-rose-600',
+  refunded:           'bg-slate-100 text-slate-500',
+}
+const STATUS_LABELS = {
+  pending:            'Pending',
+  awaiting_approval:  'Awaiting Approval',
+  confirmed:          'Confirmed',
+  in_progress:        'In Progress',
+  completed:          'Completed',
+  cancelled:          'Cancelled',
+  refunded:           'Refunded',
 }
 function StatusBadge({ status }) {
   return (
-    <span className={`rounded-lg px-2.5 py-1 text-xs font-black capitalize ${STATUS_STYLES[status] || 'bg-slate-100 text-slate-600'}`}>
-      {status}
+    <span className={`rounded-lg px-2.5 py-1 text-xs font-black ${STATUS_STYLES[status] || 'bg-slate-100 text-slate-600'}`}>
+      {STATUS_LABELS[status] || status}
     </span>
   )
 }
@@ -461,6 +473,43 @@ function ConsultantAvailability() {
     }
   }
 
+  const handleApprove = async (id) => {
+    try {
+      await api.post(`/consultations/sessions/${id}/confirm_session/`)
+      setSessions(prev => prev.map(s => s.id === id ? { ...s, status: 'confirmed' } : s))
+      Swal.fire({ icon: 'success', title: 'Session approved!', timer: 1200, showConfirmButton: false })
+    } catch {
+      Swal.fire({ icon: 'error', title: 'Failed to approve', text: 'Please try again.' })
+    }
+  }
+
+  const handleDecline = async (id) => {
+    const result = await Swal.fire({
+      title: 'Decline session request?',
+      html: `
+        <p style="margin-bottom:12px;color:#64748b;font-size:13px;">Optionally provide a reason — the client will see this in their notification.</p>
+        <textarea id="swal-decline-reason" placeholder="e.g. Not available on this date, please reschedule." rows="3"
+          style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;resize:vertical;outline:none;font-family:inherit;"></textarea>
+      `,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Decline',
+      cancelButtonText: 'Keep it',
+      confirmButtonColor: '#dc2626',
+      preConfirm: () => {
+        return document.getElementById('swal-decline-reason')?.value?.trim() || ''
+      },
+    })
+    if (!result.isConfirmed) return
+    try {
+      await api.post(`/consultations/sessions/${id}/decline_session/`, { reason: result.value })
+      setSessions(prev => prev.map(s => s.id === id ? { ...s, status: 'cancelled' } : s))
+      Swal.fire({ icon: 'info', title: 'Session declined', timer: 1200, showConfirmButton: false })
+    } catch {
+      Swal.fire({ icon: 'error', title: 'Failed to decline', text: 'Please try again.' })
+    }
+  }
+
   const handleConfirm = async (id) => {
     try {
       await api.post(`/consultations/sessions/${id}/confirm_session/`)
@@ -653,13 +702,19 @@ function ConsultantAvailability() {
                       </span>
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex shrink-0 flex-col items-end gap-2">
                     <StatusBadge status={session.status} />
-                    {session.status === 'pending' && (
-                      <button onClick={() => handleConfirm(session.id)}
-                        className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-black text-white hover:bg-emerald-500">
-                        <FaCircleCheck /> Confirm
-                      </button>
+                    {(session.status === 'awaiting_approval' || session.status === 'pending') && (
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => handleApprove(session.id)}
+                          className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-black text-white hover:bg-emerald-500">
+                          <FaCircleCheck /> Approve
+                        </button>
+                        <button onClick={() => handleDecline(session.id)}
+                          className="flex items-center gap-1 rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-black text-rose-600 hover:bg-rose-50">
+                          Decline
+                        </button>
+                      </div>
                     )}
                     {session.status === 'confirmed' && (
                       <button onClick={() => handleComplete(session.id)}

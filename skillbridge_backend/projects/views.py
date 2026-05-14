@@ -52,12 +52,14 @@ class ProjectViewSet(viewsets.ModelViewSet):
             create_notification(
                 proposal.freelancer, 'proposal_accepted',
                 'Proposal Accepted! 🎉',
-                f'Your proposal on "{project.title}" was accepted. Get to work!'
+                f'Your proposal on "{project.title}" was accepted. Get to work!',
+                related_id=project.id
             )
             create_notification(
                 request.user, 'proposal_received',
                 'You accepted a proposal',
-                f'You selected {proposal.freelancer.username} for "{project.title}".'
+                f'You selected {proposal.freelancer.username} for "{project.title}".',
+                related_id=project.id
             )
 
             return Response({'detail': 'Proposal accepted'})

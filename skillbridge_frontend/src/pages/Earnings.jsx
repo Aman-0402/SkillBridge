@@ -88,6 +88,7 @@ export default function Earnings() {
   const isClient = user?.role === 'client'
 
   const [payments, setPayments] = useState([])
+  const [legacySessions, setLegacySessions] = useState([])
   const [wallet, setWallet] = useState(null)
   const [withdrawals, setWithdrawals] = useState([])
   const [loading, setLoading] = useState(true)
@@ -97,13 +98,33 @@ export default function Earnings() {
     setLoading(true)
     try {
       if (isClient) {
-        const { data } = await api.get('/proposals/payments/my_payments/')
-        setPayments(Array.isArray(data) ? data : [])
+        const [paymentsRes, sessionsRes] = await Promise.all([
+          api.get('/proposals/payments/my_payments/'),
+          api.get('/consultations/sessions/my_sessions/'),
+        ])
+        const pList = Array.isArray(paymentsRes.data) ? paymentsRes.data : []
+        setPayments(pList)
+        // Sessions with cost but no matching Payment record = legacy/direct sessions
+        const sessionList = Array.isArray(sessionsRes.data) ? sessionsRes.data : sessionsRes.data?.results || []
+        const linkedIds = new Set(pList.filter(p => p.linked_session).map(p => p.linked_session))
+        setLegacySessions(
+          sessionList.filter(s => s.session_cost && Number(s.session_cost) > 0 && !linkedIds.has(s.id) && ['completed', 'payment_released'].includes(s.status))
+        )
       } else {
-        const { data } = await api.get('/proposals/payments/my_earnings/')
-        setPayments(Array.isArray(data.payments) ? data.payments : [])
-        setWallet(data.wallet || null)
-        setWithdrawals(Array.isArray(data.withdrawals) ? data.withdrawals : [])
+        const [earningsRes, sessionsRes] = await Promise.all([
+          api.get('/proposals/payments/my_earnings/'),
+          ['consultant', 'both'].includes(user?.role) ? api.get('/consultations/sessions/my_sessions/') : Promise.resolve({ data: [] }),
+        ])
+        const pList = Array.isArray(earningsRes.data.payments) ? earningsRes.data.payments : []
+        setPayments(pList)
+        setWallet(earningsRes.data.wallet || null)
+        setWithdrawals(Array.isArray(earningsRes.data.withdrawals) ? earningsRes.data.withdrawals : [])
+        // Legacy sessions: completed with no linked Payment record (consultant side)
+        const sessionList = Array.isArray(sessionsRes.data) ? sessionsRes.data : sessionsRes.data?.results || []
+        const linkedSessionIds = new Set(pList.filter(p => p.linked_session).map(p => p.linked_session))
+        setLegacySessions(
+          sessionList.filter(s => s.session_cost && Number(s.session_cost) > 0 && !linkedSessionIds.has(s.id) && ['completed', 'payment_released'].includes(s.status))
+        )
       }
     } catch {}
     setLoading(false)
@@ -113,6 +134,7 @@ export default function Earnings() {
 
   const totalPaid = payments.filter(p => ['released', 'completed', 'in_escrow', 'paid'].includes(p.status))
     .reduce((s, p) => s + Number(p.total_amount || p.amount || 0), 0)
+    + legacySessions.reduce((s, sess) => s + Number(sess.session_cost || 0), 0)
 
   const escrowPayments = payments.filter(p => ['in_escrow', 'paid', 'completed'].includes(p.status))
 
@@ -178,6 +200,13 @@ export default function Earnings() {
         </div>
       )}
 
+      {/* Legacy session notice — sessions completed outside escrow flow */}
+      {!isClient && legacySessions.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <span className="font-black">{legacySessions.length} session{legacySessions.length > 1 ? 's' : ''}</span> completed outside the escrow system — shown below but not in wallet balance. Future bookings go through escrow automatically.
+        </div>
+      )}
+
       {/* Summary cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {[
@@ -188,7 +217,7 @@ export default function Earnings() {
           },
           {
             label: 'Total Transactions',
-            value: payments.length,
+            value: payments.length + legacySessions.length,
             color: 'text-blue-600',
           },
           {
@@ -238,7 +267,7 @@ export default function Earnings() {
           </p>
         </div>
 
-        {payments.length === 0 ? (
+        {payments.length === 0 && legacySessions.length === 0 ? (
           <p className="py-12 text-center text-sm text-slate-400">
             {isClient ? 'No payments made yet.' : 'No payments received yet.'}
           </p>
@@ -269,6 +298,21 @@ export default function Earnings() {
                         <Link to={`/invoice/${p.id}`} className="text-xs text-indigo-600 hover:underline font-semibold">Invoice</Link>
                       )}
                     </td>
+                  </tr>
+                ))}
+                {legacySessions.map(s => (
+                  <tr key={`sess-${s.id}`} className="hover:bg-slate-50 transition bg-amber-50/30">
+                    <td className="px-6 py-4 text-slate-900 max-w-[180px] truncate">
+                      <span>{s.title || 'Consultation Session'}</span>
+                      <span className="ml-2 rounded px-1.5 py-0.5 text-[10px] font-black bg-amber-100 text-amber-700">Direct</span>
+                    </td>
+                    <td className="px-6 py-4 text-slate-700">{formatCurrency(s.session_cost)}</td>
+                    <td className="px-6 py-4 font-semibold text-slate-900">{formatCurrency(s.session_cost)}</td>
+                    <td className="px-6 py-4"><span className="rounded-lg px-2.5 py-1 text-xs font-black bg-emerald-50 text-emerald-700">completed</span></td>
+                    <td className="px-6 py-4 text-slate-500">
+                      {s.scheduled_date || new Date(s.created_at).toLocaleDateString('en-IN')}
+                    </td>
+                    <td className="px-6 py-4 text-slate-400 text-xs">—</td>
                   </tr>
                 ))}
               </tbody>

@@ -5,7 +5,7 @@ import {
   FaIndianRupeeSign, FaLocationDot, FaArrowLeft, FaLinkedin,
   FaGithub, FaXTwitter, FaLink, FaVideo, FaPhone, FaEnvelope,
   FaPerson, FaBriefcase, FaLightbulb, FaUserTie, FaCheck,
-  FaChevronRight,
+  FaChevronRight, FaFlag,
 } from 'react-icons/fa6'
 import Swal from 'sweetalert2'
 import api from '../services/api'
@@ -84,6 +84,9 @@ export default function ConsultantProfile() {
   const [selectedRate, setSelectedRate] = useState(null)
   const [duration, setDuration] = useState(60)
   const [dateWarning, setDateWarning] = useState('')
+  const [reportOpen, setReportOpen] = useState(false)
+  const [reportData, setReportData] = useState({ reason: '', message: '' })
+  const [reportSubmitting, setReportSubmitting] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -210,6 +213,26 @@ export default function ConsultantProfile() {
     }
   }
 
+  const handleReport = async (e) => {
+    e.preventDefault()
+    if (!reportData.reason || !reportData.message.trim()) return
+    setReportSubmitting(true)
+    try {
+      await api.post('/chat/reports/', {
+        reported_user: consultant.id,
+        reason: reportData.reason,
+        message: reportData.message.trim(),
+      })
+      setReportOpen(false)
+      setReportData({ reason: '', message: '' })
+      Swal.fire({ icon: 'success', title: 'Report submitted', text: 'Our team will review it shortly.', timer: 2000, showConfirmButton: false })
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Failed', text: err.response?.data?.detail || 'Could not submit report.' })
+    } finally {
+      setReportSubmitting(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -252,6 +275,65 @@ export default function ConsultantProfile() {
 
   return (
     <div className="space-y-6">
+      {/* Report modal */}
+      {reportOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-black text-slate-950 mb-1">Report this profile</h3>
+            <p className="text-xs text-slate-500 mb-4">Reports are reviewed by our admin team. One report per user.</p>
+            <form onSubmit={handleReport} className="space-y-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Reason</label>
+                <select
+                  required
+                  value={reportData.reason}
+                  onChange={e => setReportData(p => ({ ...p, reason: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
+                >
+                  <option value="">Select a reason…</option>
+                  {[
+                    ['spam',          'Spam'],
+                    ['fraud',         'Fraud / Scam'],
+                    ['harassment',    'Harassment'],
+                    ['inappropriate', 'Inappropriate Content'],
+                    ['fake_profile',  'Fake Profile'],
+                    ['poor_service',  'Poor Service'],
+                    ['other',         'Other'],
+                  ].map(([val, label]) => <option key={val} value={val}>{label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Describe the issue</label>
+                <textarea
+                  required
+                  rows={4}
+                  value={reportData.message}
+                  onChange={e => setReportData(p => ({ ...p, message: e.target.value }))}
+                  placeholder="Please provide specific details about your concern…"
+                  className="w-full resize-none rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
+                />
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => { setReportOpen(false); setReportData({ reason: '', message: '' }) }}
+                  className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-black text-slate-600 hover:bg-slate-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={reportSubmitting}
+                  className="flex-1 rounded-xl bg-rose-600 py-2.5 text-sm font-black text-white hover:bg-rose-500 transition disabled:opacity-60"
+                >
+                  {reportSubmitting ? 'Submitting…' : 'Submit Report'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Back link */}
       <Link to="/consultants" className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-blue-600 transition">
         <FaArrowLeft className="text-xs" /> Back to Consultants
@@ -338,6 +420,18 @@ export default function ConsultantProfile() {
                 {consultant.github_url && <a href={consultant.github_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100"><FaGithub /> GitHub</a>}
                 {consultant.website_url && <a href={consultant.website_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"><FaGlobe /> Website</a>}
                 {consultant.portfolio_url && <a href={consultant.portfolio_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"><FaLink /> Portfolio</a>}
+              </div>
+            )}
+
+            {/* Report button — only for logged-in non-admin users */}
+            {user && user.role !== 'admin' && user.username !== consultant.username && (
+              <div className="mt-3 flex justify-end border-t border-slate-100 pt-3">
+                <button
+                  onClick={() => setReportOpen(true)}
+                  className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-rose-500 transition font-semibold"
+                >
+                  <FaFlag className="text-[10px]" /> Report this profile
+                </button>
               </div>
             )}
           </div>

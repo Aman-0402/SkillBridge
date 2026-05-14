@@ -36,6 +36,7 @@ import ProposalTemplates from './pages/ProposalTemplates'
 import Clients from './pages/Clients'
 import Freelancers from './pages/Freelancers'
 import Invoice from './pages/Invoice'
+import Notifications from './pages/Notifications'
 
 function App() {
   return (
@@ -84,6 +85,7 @@ function App() {
             <Route path="/invoice/:paymentId" element={<Invoice />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/admin/panel" element={<AdminPanel />} />
+            <Route path="/notifications" element={<Notifications />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" />} />

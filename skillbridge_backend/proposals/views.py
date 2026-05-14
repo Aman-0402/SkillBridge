@@ -71,7 +71,7 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
                 linked_session = ConsultationSession.objects.get(id=session_id)
             except ConsultationSession.DoesNotExist:
                 return Response({'detail': 'Session not found.'}, status=status.HTTP_404_NOT_FOUND)
-            if linked_session.status not in ('confirmed', 'pending'):
+            if linked_session.status not in ('confirmed', 'pending', 'awaiting_approval'):
                 return Response({'detail': 'Session not in payable state.'}, status=status.HTTP_400_BAD_REQUEST)
             paid_to = linked_session.consultant
             base_amount = linked_session.session_cost

@@ -58,6 +58,7 @@ class Notification(models.Model):
     title = models.CharField(max_length=200)
     message = models.TextField()
     is_read = models.BooleanField(default=False)
+    related_id = models.IntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -68,5 +69,38 @@ class Notification(models.Model):
         return f"{self.user.username} — {self.title}"
 
 
-def create_notification(user, notif_type, title, message):
-    Notification.objects.create(user=user, type=notif_type, title=title, message=message)
+def create_notification(user, notif_type, title, message, related_id=None):
+    Notification.objects.create(user=user, type=notif_type, title=title, message=message, related_id=related_id)
+
+
+class Report(models.Model):
+    REASON_CHOICES = (
+        ('spam',           'Spam'),
+        ('fraud',          'Fraud / Scam'),
+        ('harassment',     'Harassment'),
+        ('inappropriate',  'Inappropriate Content'),
+        ('fake_profile',   'Fake Profile'),
+        ('poor_service',   'Poor Service'),
+        ('other',          'Other'),
+    )
+    STATUS_CHOICES = (
+        ('pending',   'Pending'),
+        ('reviewed',  'Under Review'),
+        ('resolved',  'Resolved'),
+        ('dismissed', 'Dismissed'),
+    )
+
+    reporter      = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports_made')
+    reported_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports_received')
+    reason        = models.CharField(max_length=30, choices=REASON_CHOICES)
+    message       = models.TextField()
+    status        = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    admin_note    = models.TextField(blank=True)
+    created_at    = models.DateTimeField(auto_now_add=True)
+    updated_at    = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Report by {self.reporter.username} against {self.reported_user.username} ({self.reason})"

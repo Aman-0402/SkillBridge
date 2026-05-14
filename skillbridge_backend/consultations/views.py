@@ -143,7 +143,8 @@ class ConsultationSessionViewSet(viewsets.ModelViewSet):
         create_notification(
             consultant, 'session_booked',
             'New Booking Request 📅',
-            f'{client.get_full_name() or client.username} booked a {type_display} session on {session.scheduled_date}.'
+            f'{client.get_full_name() or client.username} booked a {type_display} session on {session.scheduled_date}.',
+            related_id=session.id
         )
 
     @action(detail=False, methods=['get'], permission_classes=[AllowAny])
@@ -259,9 +260,32 @@ class ConsultationSessionViewSet(viewsets.ModelViewSet):
         create_notification(
             session.client, 'session_confirmed',
             'Session Confirmed ✅',
-            f'{session.consultant.username} confirmed your session on {session.scheduled_date}.'
+            f'{session.consultant.username} confirmed your session on {session.scheduled_date}.',
+            related_id=session.id
         )
         return Response({'detail': 'Session confirmed'})
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def decline_session(self, request, pk=None):
+        session = self.get_object()
+        if session.consultant != request.user:
+            return Response({'detail': 'Only consultant can decline session'}, status=status.HTTP_403_FORBIDDEN)
+        if session.status not in ('awaiting_approval', 'pending'):
+            return Response({'detail': 'Session cannot be declined in current state'}, status=status.HTTP_400_BAD_REQUEST)
+        reason = request.data.get('reason', '').strip()
+        session.status = 'cancelled'
+        session.save()
+        from core.models import create_notification
+        message = f'{session.consultant.username} declined your session request for {session.scheduled_date}.'
+        if reason:
+            message += f' Reason: {reason}'
+        create_notification(
+            session.client, 'session_cancelled',
+            'Session Request Declined ❌',
+            message,
+            related_id=session.id
+        )
+        return Response({'detail': 'Session declined'})
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def cancel_session(self, request, pk=None):
@@ -275,7 +299,8 @@ class ConsultationSessionViewSet(viewsets.ModelViewSet):
         create_notification(
             other, 'session_cancelled',
             'Session Cancelled ❌',
-            f'Your session on {session.scheduled_date} was cancelled.'
+            f'Your session on {session.scheduled_date} was cancelled.',
+            related_id=session.id
         )
         return Response({'detail': 'Session cancelled'})
 
@@ -290,7 +315,8 @@ class ConsultationSessionViewSet(viewsets.ModelViewSet):
         create_notification(
             session.client, 'session_completed',
             'Session Completed 🎉',
-            f'Your session with {session.consultant.username} is complete. Leave a review!'
+            f'Your session with {session.consultant.username} is complete. Leave a review!',
+            related_id=session.id
         )
         return Response({'detail': 'Session completed'})
 
@@ -373,7 +399,8 @@ class RescheduleRequestViewSet(viewsets.ModelViewSet):
         create_notification(
             other, 'reschedule_requested',
             'Reschedule Requested 🔄',
-            f'A reschedule request was made for session: {session.title} (originally {session.scheduled_date}).'
+            f'A reschedule request was made for session: {session.title} (originally {session.scheduled_date}).',
+            related_id=session.id
         )
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
@@ -403,7 +430,8 @@ class RescheduleRequestViewSet(viewsets.ModelViewSet):
             create_notification(
                 req.requested_by, 'reschedule_responded',
                 'Reschedule Approved ✅',
-                f'Your reschedule request for "{session.title}" was approved. New date: {req.new_date}.'
+                f'Your reschedule request for "{session.title}" was approved. New date: {req.new_date}.',
+                related_id=session.id
             )
 
         elif response_action == 'reject':
@@ -414,7 +442,8 @@ class RescheduleRequestViewSet(viewsets.ModelViewSet):
             create_notification(
                 req.requested_by, 'reschedule_responded',
                 'Reschedule Rejected ❌',
-                f'Your reschedule request for "{session.title}" was rejected. Original slot remains.'
+                f'Your reschedule request for "{session.title}" was rejected. Original slot remains.',
+                related_id=session.id
             )
 
         elif response_action == 'counter':
@@ -426,7 +455,6 @@ class RescheduleRequestViewSet(viewsets.ModelViewSet):
                 return Response({'detail': 'new_date, new_start_time, new_end_time required for counter.'}, status=status.HTTP_400_BAD_REQUEST)
             req.status = 'counter'
             req.save()
-            # Create a new reschedule request from the other party
             counter = RescheduleRequest.objects.create(
                 session=session,
                 requested_by=user,
@@ -438,7 +466,8 @@ class RescheduleRequestViewSet(viewsets.ModelViewSet):
             create_notification(
                 req.requested_by, 'reschedule_responded',
                 'Counter Proposal ↔️',
-                f'A counter reschedule was proposed for "{session.title}". New date: {new_date}.'
+                f'A counter reschedule was proposed for "{session.title}". New date: {new_date}.',
+                related_id=session.id
             )
             return Response(RescheduleRequestSerializer(counter).data)
 
@@ -471,5 +500,6 @@ class ReviewViewSet(viewsets.ModelViewSet):
         create_notification(
             session.consultant, 'review_received',
             'New Review ⭐',
-            f'{user.username} left you a {serializer.validated_data.get("rating", "")}-star review.'
+            f'{user.username} left you a {serializer.validated_data.get("rating", "")}-star review.',
+            related_id=session.id
         )

@@ -3,7 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, BasePermission
 from django.contrib.auth import get_user_model
-from .models import Conversation, Message, Notification
+from .models import Conversation, Message, Notification, Report
 from .serializers import ConversationSerializer, ConversationListSerializer, MessageSerializer, NotificationSerializer
 from .analytics import get_client_stats, get_freelancer_stats, get_consultant_stats, get_both_stats, get_admin_stats, get_user_growth, get_user_revenue_chart
 from projects.models import Project, Proposal
@@ -489,3 +489,71 @@ class NotificationViewSet(viewsets.ViewSet):
     def mark_all_read(self, request):
         Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
         return Response({'detail': 'All marked read.'})
+
+
+class ReportViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    def create(self, request):
+        reported_id = request.data.get('reported_user')
+        reason = request.data.get('reason')
+        message = request.data.get('message', '').strip()
+
+        if not reported_id or not reason:
+            return Response({'detail': 'reported_user and reason required.'}, status=status.HTTP_400_BAD_REQUEST)
+        if not message:
+            return Response({'detail': 'message required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            reported_user = User.objects.get(id=reported_id)
+        except User.DoesNotExist:
+            return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if reported_user == request.user:
+            return Response({'detail': 'Cannot report yourself.'}, status=status.HTTP_400_BAD_REQUEST)
+        if reported_user.role == 'admin':
+            return Response({'detail': 'Cannot report admin.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        report, created = Report.objects.get_or_create(
+            reporter=request.user,
+            reported_user=reported_user,
+            defaults={'reason': reason, 'message': message},
+        )
+        if not created:
+            return Response({'detail': 'You have already reported this user.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({'detail': 'Report submitted. Our team will review it.'}, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['get'])
+    def list_reports(self, request):
+        if not request.user.is_staff:
+            return Response({'detail': 'Admin only.'}, status=status.HTTP_403_FORBIDDEN)
+        reports = Report.objects.select_related('reporter', 'reported_user').all()
+        data = [{
+            'id': r.id,
+            'reporter': {'id': r.reporter.id, 'username': r.reporter.username, 'email': r.reporter.email},
+            'reported_user': {'id': r.reported_user.id, 'username': r.reported_user.username, 'role': r.reported_user.role},
+            'reason': r.reason,
+            'message': r.message,
+            'status': r.status,
+            'admin_note': r.admin_note,
+            'created_at': r.created_at.strftime('%b %d, %Y %I:%M %p'),
+        } for r in reports]
+        return Response(data)
+
+    @action(detail=True, methods=['patch'])
+    def update_status(self, request, pk=None):
+        if not request.user.is_staff:
+            return Response({'detail': 'Admin only.'}, status=status.HTTP_403_FORBIDDEN)
+        try:
+            report = Report.objects.get(pk=pk)
+        except Report.DoesNotExist:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        new_status = request.data.get('status')
+        admin_note = request.data.get('admin_note', report.admin_note)
+        if new_status not in dict(Report.STATUS_CHOICES):
+            return Response({'detail': 'Invalid status.'}, status=status.HTTP_400_BAD_REQUEST)
+        report.status = new_status
+        report.admin_note = admin_note
+        report.save()
+        return Response({'detail': 'Report updated.', 'status': report.status})

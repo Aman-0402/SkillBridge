@@ -33,9 +33,24 @@ function timeAgo(dateStr) {
   return `${Math.floor(h / 24)}d ago`
 }
 
+function getNotifLink(type, related_id) {
+  const sessionTypes = [
+    'session_booked', 'session_confirmed', 'session_cancelled', 'session_completed',
+    'reschedule_requested', 'reschedule_responded', 'session_reminder', 'double_booking_conflict',
+    'review_received',
+  ]
+  if (sessionTypes.includes(type)) return '/manage-availability'
+  if (['payment_success', 'payment_released'].includes(type)) return '/earnings'
+  if (['proposal_accepted', 'proposal_received'].includes(type)) return related_id ? `/projects/${related_id}` : '/projects'
+  if (type === 'job_application') return related_id ? `/jobs/${related_id}` : '/jobs'
+  if (['kyc_approved', 'kyc_rejected'].includes(type)) return '/profile'
+  return '/dashboard'
+}
+
 function NotificationPanel({ onClose }) {
   const [notifs, setNotifs] = useState([])
   const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
 
   const fetchNotifs = useCallback(() => {
     api.get('/chat/notifications/list_notifications/')
@@ -56,6 +71,12 @@ function NotificationPanel({ onClose }) {
     setNotifs(prev => prev.map(n => ({ ...n, is_read: true })))
   }
 
+  const handleClick = async (n) => {
+    if (!n.is_read) await markRead(n.id)
+    onClose()
+    navigate(getNotifLink(n.type, n.related_id))
+  }
+
   const unread = notifs.filter(n => !n.is_read).length
 
   return (
@@ -72,7 +93,7 @@ function NotificationPanel({ onClose }) {
         </div>
       </div>
 
-      <div className="max-h-96 overflow-y-auto">
+      <div className="max-h-80 overflow-y-auto">
         {loading ? (
           <div className="space-y-2 p-4">
             {[1,2,3].map(i => <div key={i} className="h-12 animate-pulse rounded-xl bg-slate-100" />)}
@@ -83,10 +104,10 @@ function NotificationPanel({ onClose }) {
             <p className="text-sm text-slate-400">No notifications yet</p>
           </div>
         ) : (
-          notifs.map(n => (
+          notifs.slice(0, 8).map(n => (
             <button
               key={n.id}
-              onClick={() => !n.is_read && markRead(n.id)}
+              onClick={() => handleClick(n)}
               className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-slate-50 ${!n.is_read ? 'bg-blue-50/60' : ''}`}
             >
               <span className="mt-0.5 shrink-0 text-lg">{TYPE_ICON[n.type] || '🔔'}</span>
@@ -100,62 +121,76 @@ function NotificationPanel({ onClose }) {
           ))
         )}
       </div>
+
+      <div className="border-t border-slate-100">
+        <button
+          onClick={() => { onClose(); navigate('/notifications') }}
+          className="flex w-full items-center justify-center gap-1.5 py-3 text-xs font-black text-blue-600 hover:bg-blue-50 transition"
+        >
+          View all notifications →
+        </button>
+      </div>
     </div>
   )
 }
 
 const SIDEBAR_LINKS = {
   client: [
-    { label: 'Overview',      to: '/dashboard',           icon: FaTableColumns },
-    { label: 'Consultants',   to: '/consultants',         icon: FaUserTie },
-    { label: 'Freelancers',   to: '/freelancers',         icon: FaUsers },
-    { label: 'Appointments',  to: '/manage-availability', icon: FaCalendarCheck },
-    { label: 'Projects',      to: '/projects',            icon: FaFolderOpen },
-    { label: 'Chat',          to: '/chat',                icon: FaMessage },
-    { label: 'Payments',      to: '/earnings',            icon: FaIndianRupeeSign },
-    { label: 'Profile',       to: '/profile',             icon: FaUser },
+    { label: 'Overview',       to: '/dashboard',           icon: FaTableColumns },
+    { label: 'Consultants',    to: '/consultants',         icon: FaUserTie },
+    { label: 'Freelancers',    to: '/freelancers',         icon: FaUsers },
+    { label: 'Appointments',   to: '/manage-availability', icon: FaCalendarCheck },
+    { label: 'Projects',       to: '/projects',            icon: FaFolderOpen },
+    { label: 'Chat',           to: '/chat',                icon: FaMessage },
+    { label: 'Payments',       to: '/earnings',            icon: FaIndianRupeeSign },
+    { label: 'Notifications',  to: '/notifications',       icon: FaBell },
+    { label: 'Profile',        to: '/profile',             icon: FaUser },
   ],
   freelancer: [
-    { label: 'Overview',     to: '/dashboard',            icon: FaTableColumns },
-    { label: 'Projects',     to: '/projects',             icon: FaFolderOpen },
-    { label: 'Jobs',         to: '/jobs',                 icon: FaBriefcase },
-    { label: 'Clients',      to: '/clients',              icon: FaUsers },
-    { label: 'Availability', to: '/manage-availability',  icon: FaCalendarCheck },
-    { label: 'Templates',    to: '/proposal-templates',   icon: FaFileLines },
-    { label: 'Earnings',     to: '/earnings',             icon: FaClockRotateLeft },
-    { label: 'Chat',         to: '/chat',                 icon: FaMessage },
-    { label: 'Profile',      to: '/profile',              icon: FaUser },
+    { label: 'Overview',       to: '/dashboard',           icon: FaTableColumns },
+    { label: 'Projects',       to: '/projects',            icon: FaFolderOpen },
+    { label: 'Jobs',           to: '/jobs',                icon: FaBriefcase },
+    { label: 'Clients',        to: '/clients',             icon: FaUsers },
+    { label: 'Availability',   to: '/manage-availability', icon: FaCalendarCheck },
+    { label: 'Templates',      to: '/proposal-templates',  icon: FaFileLines },
+    { label: 'Earnings',       to: '/earnings',            icon: FaClockRotateLeft },
+    { label: 'Chat',           to: '/chat',                icon: FaMessage },
+    { label: 'Notifications',  to: '/notifications',       icon: FaBell },
+    { label: 'Profile',        to: '/profile',             icon: FaUser },
   ],
   consultant: [
-    { label: 'Overview',     to: '/dashboard',            icon: FaTableColumns },
-    { label: 'Sessions',     to: '/manage-availability',  icon: FaCalendarCheck },
-    { label: 'Projects',     to: '/projects',             icon: FaFolderOpen },
-    { label: 'Clients',      to: '/clients',              icon: FaUsers },
-    { label: 'Templates',    to: '/proposal-templates',   icon: FaFileLines },
-    { label: 'Earnings',     to: '/earnings',             icon: FaClockRotateLeft },
-    { label: 'Chat',         to: '/chat',                 icon: FaMessage },
-    { label: 'Profile',      to: '/profile',              icon: FaUser },
+    { label: 'Overview',       to: '/dashboard',           icon: FaTableColumns },
+    { label: 'Sessions',       to: '/manage-availability', icon: FaCalendarCheck },
+    { label: 'Projects',       to: '/projects',            icon: FaFolderOpen },
+    { label: 'Clients',        to: '/clients',             icon: FaUsers },
+    { label: 'Templates',      to: '/proposal-templates',  icon: FaFileLines },
+    { label: 'Earnings',       to: '/earnings',            icon: FaClockRotateLeft },
+    { label: 'Chat',           to: '/chat',                icon: FaMessage },
+    { label: 'Notifications',  to: '/notifications',       icon: FaBell },
+    { label: 'Profile',        to: '/profile',             icon: FaUser },
   ],
   both: [
-    { label: 'Overview',     to: '/dashboard',            icon: FaTableColumns },
-    { label: 'Projects',     to: '/projects',             icon: FaFolderOpen },
-    { label: 'Jobs',         to: '/jobs',                 icon: FaBriefcase },
-    { label: 'Sessions',     to: '/manage-availability',  icon: FaCalendarCheck },
-    { label: 'Consultants',  to: '/consultants',          icon: FaUserTie },
-    { label: 'Clients',      to: '/clients',              icon: FaUsers },
-    { label: 'Templates',    to: '/proposal-templates',   icon: FaFileLines },
-    { label: 'Earnings',     to: '/earnings',             icon: FaClockRotateLeft },
-    { label: 'Chat',         to: '/chat',                 icon: FaMessage },
-    { label: 'Profile',      to: '/profile',              icon: FaUser },
+    { label: 'Overview',       to: '/dashboard',           icon: FaTableColumns },
+    { label: 'Projects',       to: '/projects',            icon: FaFolderOpen },
+    { label: 'Jobs',           to: '/jobs',                icon: FaBriefcase },
+    { label: 'Sessions',       to: '/manage-availability', icon: FaCalendarCheck },
+    { label: 'Consultants',    to: '/consultants',         icon: FaUserTie },
+    { label: 'Clients',        to: '/clients',             icon: FaUsers },
+    { label: 'Templates',      to: '/proposal-templates',  icon: FaFileLines },
+    { label: 'Earnings',       to: '/earnings',            icon: FaClockRotateLeft },
+    { label: 'Chat',           to: '/chat',                icon: FaMessage },
+    { label: 'Notifications',  to: '/notifications',       icon: FaBell },
+    { label: 'Profile',        to: '/profile',             icon: FaUser },
   ],
   admin: [
-    { label: 'Overview',       to: '/dashboard',         icon: FaTableColumns },
-    { label: 'Analytics',      to: '/admin/dashboard',   icon: FaChartPie },
-    { label: 'Admin Panel',    to: '/admin/panel',       icon: FaShieldHalved },
-    { label: 'Projects',       to: '/projects',          icon: FaFolderOpen },
-    { label: 'Consultants',    to: '/consultants',       icon: FaUserTie },
-    { label: 'Chat',           to: '/chat',              icon: FaMessage },
-    { label: 'Profile',        to: '/profile',           icon: FaUser },
+    { label: 'Overview',       to: '/dashboard',           icon: FaTableColumns },
+    { label: 'Analytics',      to: '/admin/dashboard',     icon: FaChartPie },
+    { label: 'Admin Panel',    to: '/admin/panel',         icon: FaShieldHalved },
+    { label: 'Projects',       to: '/projects',            icon: FaFolderOpen },
+    { label: 'Consultants',    to: '/consultants',         icon: FaUserTie },
+    { label: 'Chat',           to: '/chat',                icon: FaMessage },
+    { label: 'Notifications',  to: '/notifications',       icon: FaBell },
+    { label: 'Profile',        to: '/profile',             icon: FaUser },
   ],
 }
 

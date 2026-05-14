@@ -51,5 +51,5 @@ class ConversationListSerializer(serializers.ModelSerializer):
 class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
-        fields = ['id', 'type', 'title', 'message', 'is_read', 'created_at']
-        read_only_fields = ['id', 'type', 'title', 'message', 'created_at']
+        fields = ['id', 'type', 'title', 'message', 'is_read', 'related_id', 'created_at']
+        read_only_fields = ['id', 'type', 'title', 'message', 'related_id', 'created_at']

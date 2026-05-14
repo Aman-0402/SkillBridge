@@ -442,7 +442,7 @@ export default function Profile() {
   const [showPremiumModal, setShowPremiumModal] = useState(false)
   const [roleChanging, setRoleChanging] = useState('')
   const [sessionRates, setSessionRates] = useState([])
-  const [rateInputs, setRateInputs] = useState({ video: '', phone: '', chat: '', in_person: '' })
+  const [rateInputs, setRateInputs] = useState({ video: '', call: '', email: '', in_person: '' })
   const [ratesSaving, setRatesSaving] = useState(false)
 
   const handleRoleChange = async (newRole) => {
@@ -480,7 +480,7 @@ export default function Profile() {
       api.get('/consultations/session-rates/').then(res => {
         const rates = Array.isArray(res.data) ? res.data : res.data.results || []
         setSessionRates(rates)
-        const inputs = { video: '', phone: '', chat: '', in_person: '' }
+        const inputs = { video: '', call: '', email: '', in_person: '' }
         rates.forEach(r => { inputs[r.session_type] = r.hourly_rate })
         setRateInputs(inputs)
       }).catch(() => {})
@@ -542,8 +542,8 @@ export default function Profile() {
     try {
       const SESSION_TYPES = [
         { key: 'video', label: 'Video Call' },
-        { key: 'phone', label: 'Phone Call' },
-        { key: 'chat', label: 'Chat' },
+        { key: 'call', label: 'Phone Call' },
+        { key: 'email', label: 'Email / Chat' },
         { key: 'in_person', label: 'In Person' },
       ]
       for (const { key } of SESSION_TYPES) {
@@ -686,7 +686,7 @@ export default function Profile() {
         <h1 className="mt-1 text-2xl font-black text-slate-950">My Profile</h1>
       </div>
 
-      <ProfileStrengthMeter pct={profile.profile_completion_pct} />
+      {user?.role !== 'admin' && <ProfileStrengthMeter pct={profile.profile_completion_pct} />}
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* ── Left: avatar card ── */}
@@ -793,77 +793,80 @@ export default function Profile() {
                     />
                   </div>
                 </div>
-                {/* Phone, State — all roles */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Phone</label>
-                    <input
-                      type="tel"
-                      value={formData.phone}
-                      onChange={e => setFormData(p => ({ ...p, phone: e.target.value }))}
-                      placeholder="+91 9876543210"
-                      className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">State / Region</label>
-                    <input
-                      type="text"
-                      value={formData.state}
-                      onChange={e => setFormData(p => ({ ...p, state: e.target.value }))}
-                      placeholder="e.g. Maharashtra"
-                      className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                    />
-                  </div>
-                </div>
-                {/* Identity — all roles */}
-                <div>
-                  <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Identity / Entity Type</label>
-                  <select
-                    value={formData.identity}
-                    onChange={e => setFormData(p => ({ ...p, identity: e.target.value }))}
-                    className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                  >
-                    <option value="">Select…</option>
-                    {user?.role === 'client'
-                      ? ['Enterprise', 'MSME', 'Professional', 'Self-Employed', 'Individual'].map(v => <option key={v} value={v}>{v}</option>)
-                      : ['Consultant', 'Trainer', 'Mentor', 'Expert', 'Firm'].map(v => <option key={v} value={v}>{v}</option>)
-                    }
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Bio</label>
-                  <textarea
-                    value={formData.bio}
-                    onChange={e => setFormData(p => ({ ...p, bio: e.target.value }))}
-                    rows={3}
-                    placeholder="Tell clients about yourself…"
-                    className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100 resize-none"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Location</label>
-                    <input
-                      type="text"
-                      value={formData.location}
-                      onChange={e => setFormData(p => ({ ...p, location: e.target.value }))}
-                      placeholder="City, Country"
-                      className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Hourly Rate (₹)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={formData.hourly_rate}
-                      onChange={e => setFormData(p => ({ ...p, hourly_rate: e.target.value }))}
-                      placeholder="e.g. 1500"
-                      className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                    />
-                  </div>
-                </div>
+                {/* Phone, State, Identity, Bio, Location, Hourly Rate — not for admin */}
+                {user?.role !== 'admin' && (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Phone</label>
+                        <input
+                          type="tel"
+                          value={formData.phone}
+                          onChange={e => setFormData(p => ({ ...p, phone: e.target.value }))}
+                          placeholder="+91 9876543210"
+                          className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">State / Region</label>
+                        <input
+                          type="text"
+                          value={formData.state}
+                          onChange={e => setFormData(p => ({ ...p, state: e.target.value }))}
+                          placeholder="e.g. Maharashtra"
+                          className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Identity / Entity Type</label>
+                      <select
+                        value={formData.identity}
+                        onChange={e => setFormData(p => ({ ...p, identity: e.target.value }))}
+                        className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                      >
+                        <option value="">Select…</option>
+                        {user?.role === 'client'
+                          ? ['Enterprise', 'MSME', 'Professional', 'Self-Employed', 'Individual'].map(v => <option key={v} value={v}>{v}</option>)
+                          : ['Consultant', 'Trainer', 'Mentor', 'Expert', 'Firm'].map(v => <option key={v} value={v}>{v}</option>)
+                        }
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Bio</label>
+                      <textarea
+                        value={formData.bio}
+                        onChange={e => setFormData(p => ({ ...p, bio: e.target.value }))}
+                        rows={3}
+                        placeholder="Tell clients about yourself…"
+                        className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100 resize-none"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Location</label>
+                        <input
+                          type="text"
+                          value={formData.location}
+                          onChange={e => setFormData(p => ({ ...p, location: e.target.value }))}
+                          placeholder="City, Country"
+                          className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Hourly Rate (₹)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={formData.hourly_rate}
+                          onChange={e => setFormData(p => ({ ...p, hourly_rate: e.target.value }))}
+                          placeholder="e.g. 1500"
+                          className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
                 {['consultant', 'freelancer', 'both'].includes(user?.role) && (
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -1006,8 +1009,8 @@ export default function Profile() {
                     <div className="grid grid-cols-2 gap-3">
                       {[
                         { key: 'video', label: 'Video Call', icon: '📹' },
-                        { key: 'phone', label: 'Phone Call', icon: '📞' },
-                        { key: 'chat', label: 'Chat', icon: '💬' },
+                        { key: 'call', label: 'Phone Call', icon: '📞' },
+                        { key: 'email', label: 'Email / Chat', icon: '💬' },
                         { key: 'in_person', label: 'In Person', icon: '🤝' },
                       ].map(({ key, label, icon }) => (
                         <div key={key}>

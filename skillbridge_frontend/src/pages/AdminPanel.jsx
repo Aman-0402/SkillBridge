@@ -141,9 +141,10 @@ export default function AdminPanel() {
         jobs: '/chat/admin/jobs/',
         consultations: '/chat/admin/consultations/',
         withdrawals: '/chat/admin/withdrawals/',
+        reports: '/chat/reports/list_reports/',
       }
       const response = await api.get(endpoints[tab], {
-        params: search ? { search } : {}
+        params: tab !== 'reports' && search ? { search } : {}
       })
       setData(Array.isArray(response.data) ? response.data : [])
     } catch (error) {
@@ -347,6 +348,7 @@ export default function AdminPanel() {
     { id: 'consultations', label: 'Consultations', icon: '📞' },
     { id: 'withdrawals', label: 'Withdrawals', icon: '💸' },
     { id: 'kyc', label: 'KYC Requests', icon: '🪪' },
+    { id: 'reports', label: 'Reports', icon: '🚩' },
   ]
 
   const renderTable = () => {
@@ -521,6 +523,116 @@ export default function AdminPanel() {
     )
   }
 
+  // ── Reports panel ──────────────────────────────────────────────────────────
+  function ReportsPanel() {
+    const [reports, setReports] = useState([])
+    const [loadingR, setLoadingR] = useState(true)
+    const [expandedId, setExpandedId] = useState(null)
+    const [updatingId, setUpdatingId] = useState(null)
+
+    const STATUS_COLOR = {
+      pending:   'bg-amber-100 text-amber-700',
+      reviewed:  'bg-blue-100 text-blue-700',
+      resolved:  'bg-emerald-100 text-emerald-700',
+      dismissed: 'bg-slate-100 text-slate-500',
+    }
+
+    useEffect(() => {
+      api.get('/chat/reports/list_reports/')
+        .then(r => setReports(Array.isArray(r.data) ? r.data : []))
+        .catch(() => {})
+        .finally(() => setLoadingR(false))
+    }, [])
+
+    const updateStatus = async (id, newStatus, adminNote) => {
+      setUpdatingId(id)
+      try {
+        await api.patch(`/chat/reports/${id}/update_status/`, { status: newStatus, admin_note: adminNote })
+        setReports(prev => prev.map(r => r.id === id ? { ...r, status: newStatus, admin_note: adminNote } : r))
+      } catch { /* ignore */ } finally { setUpdatingId(null) }
+    }
+
+    if (loadingR) return <div className="py-8 text-center text-sm text-gray-500">Loading reports…</div>
+    if (!reports.length) return <div className="py-8 text-center text-sm text-gray-500">No reports yet.</div>
+
+    return (
+      <div className="space-y-3">
+        {reports.map(r => (
+          <div key={r.id} className={`rounded-xl border p-4 ${r.status === 'pending' ? 'border-amber-200 bg-amber-50/30' : 'border-slate-200 bg-white'}`}>
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-black text-slate-950 text-sm">{r.reporter.username}</span>
+                  <span className="text-xs text-slate-400">reported</span>
+                  <span className="font-black text-rose-600 text-sm">@{r.reported_user.username}</span>
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 capitalize">{r.reported_user.role}</span>
+                </div>
+                <div className="mt-1 flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-black uppercase tracking-wide text-slate-400">{r.reason.replace('_', ' ')}</span>
+                  <span className="text-[10px] text-slate-400">·</span>
+                  <span className="text-[10px] text-slate-400">{r.created_at}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-black capitalize ${STATUS_COLOR[r.status] || 'bg-slate-100 text-slate-600'}`}>
+                  {r.status}
+                </span>
+                <button
+                  onClick={() => setExpandedId(expandedId === r.id ? null : r.id)}
+                  className="rounded-lg border border-slate-200 px-3 py-1 text-xs font-black text-slate-600 hover:bg-slate-50 transition"
+                >
+                  {expandedId === r.id ? 'Hide' : 'View'}
+                </button>
+              </div>
+            </div>
+
+            {expandedId === r.id && (
+              <div className="mt-4 space-y-3 border-t border-slate-100 pt-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-wide text-slate-400 mb-1">Reporter</p>
+                  <p className="text-xs text-slate-600">{r.reporter.username} · {r.reporter.email}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-wide text-slate-400 mb-1">Message from reporter</p>
+                  <p className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-sm text-slate-800 whitespace-pre-wrap">{r.message}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-wide text-slate-400 mb-1">Admin note</p>
+                  <textarea
+                    defaultValue={r.admin_note}
+                    id={`note-${r.id}`}
+                    rows={2}
+                    placeholder="Add internal note…"
+                    className="w-full resize-none rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {['reviewed', 'resolved', 'dismissed'].map(s => (
+                    <button
+                      key={s}
+                      disabled={updatingId === r.id || r.status === s}
+                      onClick={() => {
+                        const note = document.getElementById(`note-${r.id}`)?.value || r.admin_note
+                        updateStatus(r.id, s, note)
+                      }}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-black transition disabled:opacity-50 ${
+                        s === 'resolved'  ? 'bg-emerald-600 text-white hover:bg-emerald-500' :
+                        s === 'dismissed' ? 'bg-slate-500 text-white hover:bg-slate-400' :
+                        'bg-blue-600 text-white hover:bg-blue-500'
+                      }`}
+                    >
+                      {updatingId === r.id ? '…' : `Mark ${s}`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white shadow">
@@ -550,8 +662,8 @@ export default function AdminPanel() {
           ))}
         </div>
 
-        {/* Search Bar — all tabs except KYC and Withdrawals */}
-        {activeTab !== 'kyc' && activeTab !== 'withdrawals' && (
+        {/* Search Bar — all tabs except KYC, Withdrawals, Reports */}
+        {activeTab !== 'kyc' && activeTab !== 'withdrawals' && activeTab !== 'reports' && (
           <div className="mb-4 space-y-3">
             <input
               type="text"
@@ -589,8 +701,10 @@ export default function AdminPanel() {
 
         {/* Data Table */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4 capitalize">{activeTab === 'kyc' ? 'Pending KYC Requests' : activeTab}</h2>
-          {activeTab === 'kyc' ? <KYCPanel /> : (loading ? <div className="text-center py-8 text-sm text-gray-500">Loading…</div> : renderTable())}
+          <h2 className="text-xl font-bold text-gray-900 mb-4 capitalize">
+            {activeTab === 'kyc' ? 'Pending KYC Requests' : activeTab === 'reports' ? '🚩 User Reports' : activeTab}
+          </h2>
+          {activeTab === 'kyc' ? <KYCPanel /> : activeTab === 'reports' ? <ReportsPanel /> : (loading ? <div className="text-center py-8 text-sm text-gray-500">Loading…</div> : renderTable())}
         </div>
       </div>
     </div>

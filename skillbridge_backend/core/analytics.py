@@ -22,6 +22,16 @@ def get_client_stats(user):
     project_spent    = project_payments.aggregate(total=Sum('total_amount'))['total'] or 0
     consultation_spent = consultation_payments.aggregate(total=Sum('total_amount'))['total'] or 0
 
+    # Legacy sessions: completed sessions with no linked Payment record
+    from consultations.models import ConsultationSession
+    paid_session_ids = set(Payment.objects.filter(paid_by=user, linked_session__isnull=False).values_list('linked_session_id', flat=True))
+    legacy_session_cost = sum(
+        s.session_cost or 0
+        for s in ConsultationSession.objects.filter(client=user, status__in=['completed', 'payment_released'])
+        if s.id not in paid_session_ids
+    )
+    consultation_spent = float(consultation_spent) + float(legacy_session_cost)
+
     escrow_amount   = Payment.objects.filter(paid_by=user, status__in=['in_escrow', 'paid']).aggregate(total=Sum('total_amount'))['total'] or 0
     released_amount = Payment.objects.filter(paid_by=user, status__in=['released', 'payment_released']).aggregate(total=Sum('total_amount'))['total'] or 0
     pending_amount  = Payment.objects.filter(paid_by=user, status__in=['pending', 'processing']).aggregate(total=Sum('total_amount'))['total'] or 0
@@ -40,7 +50,7 @@ def get_client_stats(user):
         'project_spent':       float(project_spent),
         'consultation_spent':  float(consultation_spent),
         'total_spent':         float(project_spent + consultation_spent),
-        'total_transactions':  Payment.objects.filter(Q(proposal__project__client=user) | Q(paid_by=user)).count(),
+        'total_transactions':  Payment.objects.filter(Q(proposal__project__client=user) | Q(paid_by=user)).count() + len([s for s in ConsultationSession.objects.filter(client=user, status__in=['completed', 'payment_released']) if s.id not in paid_session_ids]),
         'escrow_amount':       float(escrow_amount),
         'released_amount':     float(released_amount),
         'pending_amount':      float(pending_amount),
