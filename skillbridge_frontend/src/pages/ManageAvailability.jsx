@@ -414,7 +414,7 @@ function ConsultantAvailability() {
   const [availability, setAvailability] = useState([])
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
-  const [newSlot, setNewSlot] = useState({ day_of_week: 'monday', start_time: '09:00', end_time: '10:00' })
+  const [newSlot, setNewSlot] = useState({ day_of_week: 'monday', start_time: '09:00', end_time: '10:00', buffer_minutes: 0, max_bookings_per_slot: 1 })
   const [saving, setSaving] = useState(false)
   const [viewMode, setViewMode] = useState('list')
 
@@ -434,7 +434,7 @@ function ConsultantAvailability() {
     try {
       const res = await api.post('/consultations/availability/', newSlot)
       setAvailability(prev => [...prev, res.data])
-      setNewSlot({ day_of_week: 'monday', start_time: '09:00', end_time: '10:00' })
+      setNewSlot({ day_of_week: 'monday', start_time: '09:00', end_time: '10:00', buffer_minutes: 0, max_bookings_per_slot: 1 })
       Swal.fire({ icon: 'success', title: 'Slot added!', timer: 1200, showConfirmButton: false })
     } catch {
       Swal.fire({ icon: 'error', title: 'Failed to add slot', text: 'Please try again.' })
@@ -530,6 +530,28 @@ function ConsultantAvailability() {
                   onChange={e => setNewSlot(p => ({ ...p, end_time: e.target.value }))}
                   className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
                 />
+              </label>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="grid gap-1.5 text-xs font-black uppercase tracking-wider text-slate-500">
+                Buffer (min)
+                <select
+                  value={newSlot.buffer_minutes}
+                  onChange={e => setNewSlot(p => ({ ...p, buffer_minutes: Number(e.target.value) }))}
+                  className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+                >
+                  {[0, 15, 30, 60].map(v => <option key={v} value={v}>{v === 0 ? 'None' : `${v} min`}</option>)}
+                </select>
+              </label>
+              <label className="grid gap-1.5 text-xs font-black uppercase tracking-wider text-slate-500">
+                Max bookings
+                <select
+                  value={newSlot.max_bookings_per_slot}
+                  onChange={e => setNewSlot(p => ({ ...p, max_bookings_per_slot: Number(e.target.value) }))}
+                  className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+                >
+                  {[1, 2, 3, 4, 5].map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
               </label>
             </div>
             <button type="submit" disabled={saving}

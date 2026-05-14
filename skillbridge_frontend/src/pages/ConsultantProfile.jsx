@@ -80,6 +80,10 @@ export default function ConsultantProfile() {
     session_cost: '',
   })
   const [booking, setBooking] = useState(false)
+  const [sessionRates, setSessionRates] = useState([])
+  const [selectedRate, setSelectedRate] = useState(null)
+  const [duration, setDuration] = useState(60)
+  const [dateWarning, setDateWarning] = useState('')
 
   useEffect(() => {
     const load = async () => {
@@ -90,6 +94,10 @@ export default function ConsultantProfile() {
         setConsultant(data)
         const availRes = await api.get(`/consultations/availability/consultant_availability/?consultant_id=${data.id}`)
         setAvailability(Array.isArray(availRes.data) ? availRes.data : availRes.data.results || [])
+        try {
+          const ratesRes = await api.get(`/consultations/session-rates/consultant_rates/?consultant_id=${data.id}`)
+          setSessionRates(Array.isArray(ratesRes.data) ? ratesRes.data : [])
+        } catch { /* no rates set */ }
       } catch {
         // silent
       } finally {
@@ -122,28 +130,81 @@ export default function ConsultantProfile() {
     return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`
   }
 
+  const getAvailableWindows = (dateStr) => {
+    if (!dateStr) return []
+    const dayName = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][new Date(dateStr + 'T00:00:00').getDay()]
+    return availability.filter(a => a.day_of_week === dayName && a.is_available)
+  }
+
   const handleBookingChange = (e) => {
     const { name, value } = e.target
+    if (name === 'scheduled_date') {
+      const windows = getAvailableWindows(value)
+      setDateWarning(value && windows.length === 0 ? 'Consultant is not available on this day. Choose another date.' : '')
+    }
     setBookingData(prev => {
       const next = { ...prev, [name]: value }
       if (name === 'start_time' && selectedPkg) {
         next.end_time = calcEndTime(value, selectedPkg.duration_minutes)
       }
+      if (name === 'start_time' && duration && !selectedPkg) {
+        next.end_time = calcEndTime(value, duration)
+      }
       return next
     })
   }
 
+  const handleDurationChange = (mins) => {
+    setDuration(mins)
+    if (bookingData.start_time) {
+      setBookingData(prev => ({ ...prev, end_time: calcEndTime(prev.start_time, mins) }))
+    }
+  }
+
+  const handleSessionTypeSelect = (key) => {
+    const rate = sessionRates.find(r => r.session_type === key)
+    setSelectedRate(rate || null)
+    setBookingData(prev => ({ ...prev, session_type: key }))
+  }
+
+  const computedCost = selectedRate
+    ? ((Number(selectedRate.hourly_rate) * duration) / 60).toFixed(2)
+    : null
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!user) { navigate('/login'); return }
+    if (dateWarning) return
     setBooking(true)
     try {
-      await api.post('/consultations/sessions/', { ...bookingData, consultant: consultant.id })
-      Swal.fire({ icon: 'success', title: 'Session Booked!', text: 'Check your dashboard for session details.', timer: 2500, showConfirmButton: false })
-      setSelectedPkg(null)
-      setBookingData({ session_type: 'video', title: '', description: '', scheduled_date: '', start_time: '', end_time: '', session_cost: '' })
+      const payload = {
+        ...bookingData,
+        consultant: consultant.id,
+      }
+      // Use rate-based pricing if a rate is selected
+      if (selectedRate) {
+        payload.rate_id = selectedRate.id
+        payload.duration_minutes = duration
+        delete payload.session_cost
+      }
+      const res = await api.post('/consultations/sessions/', payload)
+      // Redirect to payment page
+      navigate(`/payment/${res.data.id}?type=session`)
     } catch (err) {
-      Swal.fire({ icon: 'error', title: 'Booking Failed', text: err.response?.data?.detail || 'Could not book session.' })
+      if (err.response?.status === 409) {
+        const result = await Swal.fire({
+          icon: 'warning',
+          title: 'Time Slot Taken',
+          text: 'This consultant already has a session at that time. Would you like to book a different slot?',
+          showCancelButton: true,
+          confirmButtonText: 'Choose Another Slot',
+          cancelButtonText: 'Cancel',
+          confirmButtonColor: '#2563eb',
+        })
+        if (!result.isConfirmed) { /* stay on form */ }
+      } else {
+        Swal.fire({ icon: 'error', title: 'Booking Failed', text: err.response?.data?.detail || 'Could not book session.' })
+      }
     } finally {
       setBooking(false)
     }
@@ -575,18 +636,19 @@ export default function ConsultantProfile() {
                   <div className="grid grid-cols-2 gap-1.5">
                     {Object.entries(SESSION_TYPE_META).map(([key, meta]) => {
                       const Icon = meta.icon
+                      const rate = sessionRates.find(r => r.session_type === key)
+                      const isActive = bookingData.session_type === key
                       return (
                         <button
                           key={key}
                           type="button"
-                          onClick={() => setBookingData(p => ({ ...p, session_type: key }))}
-                          className={`flex items-center gap-1.5 rounded-xl border px-2.5 py-2 text-xs font-bold transition ${
-                            bookingData.session_type === key
-                              ? `${meta.border} ${meta.bg} ${meta.color}`
-                              : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+                          onClick={() => handleSessionTypeSelect(key)}
+                          className={`flex flex-col items-start gap-0.5 rounded-xl border px-2.5 py-2 text-xs font-bold transition ${
+                            isActive ? `${meta.border} ${meta.bg} ${meta.color}` : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
                           }`}
                         >
-                          <Icon className="text-sm" /> {meta.label}
+                          <span className="flex items-center gap-1.5"><Icon className="text-sm" /> {meta.label}</span>
+                          {rate && <span className="text-[10px] font-black opacity-80">₹{Number(rate.hourly_rate).toLocaleString('en-IN')}/hr</span>}
                         </button>
                       )
                     })}
@@ -617,6 +679,25 @@ export default function ConsultantProfile() {
                   />
                 </div>
 
+                {/* Duration selector (when rate-based pricing) */}
+                {selectedRate && (
+                  <div>
+                    <label className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500">Duration</label>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {[30, 45, 60, 90, 120].map(m => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => handleDurationChange(m)}
+                          className={`rounded-xl border px-3 py-1.5 text-xs font-black transition ${duration === m ? 'border-blue-400 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'}`}
+                        >
+                          {m >= 60 ? `${m / 60}h${m % 60 ? ` ${m % 60}m` : ''}` : `${m}m`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <label className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500">Date *</label>
                   <input
@@ -626,8 +707,12 @@ export default function ConsultantProfile() {
                     onChange={handleBookingChange}
                     required
                     min={new Date().toISOString().split('T')[0]}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                    className={`w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-100 ${dateWarning ? 'border-rose-300 focus:border-rose-400' : 'border-slate-200 focus:border-blue-400'}`}
                   />
+                  {dateWarning && <p className="mt-1 text-[11px] text-rose-600 font-semibold">{dateWarning}</p>}
+                  {bookingData.scheduled_date && !dateWarning && getAvailableWindows(bookingData.scheduled_date).length > 0 && (
+                    <p className="mt-1 text-[11px] text-emerald-600 font-semibold">✓ Available · {getAvailableWindows(bookingData.scheduled_date).map(w => `${w.start_time.slice(0,5)}–${w.end_time.slice(0,5)}`).join(', ')}</p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -655,19 +740,32 @@ export default function ConsultantProfile() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500">Session Cost (₹) *</label>
-                  <input
-                    type="number"
-                    name="session_cost"
-                    value={bookingData.session_cost}
-                    onChange={handleBookingChange}
-                    required
-                    min="0"
-                    placeholder={consultant.hourly_rate ? `e.g. ${Math.round(Number(consultant.hourly_rate))}` : '0'}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                  />
-                </div>
+                {/* Session cost — computed or manual */}
+                {selectedRate && computedCost ? (
+                  <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+                    <p className="text-[10px] font-black uppercase tracking-wide text-slate-400 mb-1">Session Cost</p>
+                    <p className="text-lg font-black text-slate-950">
+                      ₹{Number(computedCost).toLocaleString('en-IN')}
+                    </p>
+                    <p className="text-[10px] text-slate-400">
+                      ₹{Number(selectedRate.hourly_rate).toLocaleString('en-IN')}/hr × {duration} min · taxes extra at checkout
+                    </p>
+                  </div>
+                ) : !selectedRate && (
+                  <div>
+                    <label className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500">Session Cost (₹) *</label>
+                    <input
+                      type="number"
+                      name="session_cost"
+                      value={bookingData.session_cost}
+                      onChange={handleBookingChange}
+                      required={!selectedRate}
+                      min="0"
+                      placeholder={consultant.hourly_rate ? `e.g. ${Math.round(Number(consultant.hourly_rate))}` : '0'}
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                    />
+                  </div>
+                )}
 
                 <button
                   type="submit"

@@ -15,21 +15,39 @@ def get_client_stats(user):
     now = timezone.now()
     last_30_days = now - timedelta(days=30)
 
+    escrow_statuses = ['in_escrow', 'paid', 'completed', 'released', 'payment_released']
+    project_payments = Payment.objects.filter(proposal__project__client=user, status__in=escrow_statuses)
+    consultation_payments = Payment.objects.filter(paid_by=user, linked_session__isnull=False, status__in=escrow_statuses)
+
+    project_spent    = project_payments.aggregate(total=Sum('total_amount'))['total'] or 0
+    consultation_spent = consultation_payments.aggregate(total=Sum('total_amount'))['total'] or 0
+
+    escrow_amount   = Payment.objects.filter(paid_by=user, status__in=['in_escrow', 'paid']).aggregate(total=Sum('total_amount'))['total'] or 0
+    released_amount = Payment.objects.filter(paid_by=user, status__in=['released', 'payment_released']).aggregate(total=Sum('total_amount'))['total'] or 0
+    pending_amount  = Payment.objects.filter(paid_by=user, status__in=['pending', 'processing']).aggregate(total=Sum('total_amount'))['total'] or 0
+
+    client_sessions = user.consultation_sessions_as_client
+
     return {
         'total_projects': projects.count(),
         'active_projects': projects.filter(status__in=['open', 'in_progress']).count(),
         'completed_projects': projects.filter(status='completed').count(),
-        'total_spent': Payment.objects.filter(
-            proposal__project__client=user,
-            status='completed'
-        ).aggregate(Sum('amount'))['amount__sum'] or 0,
         'projects_this_month': projects.filter(created_at__gte=last_30_days).count(),
         'total_proposals': Proposal.objects.filter(project__client=user).count(),
-        'active_proposals': Proposal.objects.filter(
-            project__client=user,
-            status='submitted'
-        ).count(),
-        'avg_project_budget': projects.aggregate(Avg('budget'))['budget__avg'] or 0,
+        'active_proposals': Proposal.objects.filter(project__client=user, status='submitted').count(),
+        'avg_project_budget': float(projects.aggregate(Avg('budget'))['budget__avg'] or 0),
+        # Finance breakdown
+        'project_spent':       float(project_spent),
+        'consultation_spent':  float(consultation_spent),
+        'total_spent':         float(project_spent + consultation_spent),
+        'total_transactions':  Payment.objects.filter(Q(proposal__project__client=user) | Q(paid_by=user)).count(),
+        'escrow_amount':       float(escrow_amount),
+        'released_amount':     float(released_amount),
+        'pending_amount':      float(pending_amount),
+        # Session stats
+        'total_sessions':      client_sessions.count(),
+        'completed_sessions':  client_sessions.filter(status='completed').count(),
+        'upcoming_sessions':   client_sessions.filter(status__in=['confirmed', 'awaiting_approval', 'rescheduled']).count(),
     }
 
 def get_freelancer_stats(user):

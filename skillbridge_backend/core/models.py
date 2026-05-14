@@ -43,8 +43,14 @@ class Notification(models.Model):
         ('review_received', 'Review Received'),
         ('kyc_approved', 'KYC Approved'),
         ('kyc_rejected', 'KYC Rejected'),
-        ('job_application', 'Job Application'),
-        ('general', 'General'),
+        ('job_application',        'Job Application'),
+        ('payment_success',        'Payment Success'),
+        ('payment_released',       'Payment Released'),
+        ('reschedule_requested',   'Reschedule Requested'),
+        ('reschedule_responded',   'Reschedule Responded'),
+        ('session_reminder',       'Session Reminder'),
+        ('double_booking_conflict','Double Booking Conflict'),
+        ('general',                'General'),
     )
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')

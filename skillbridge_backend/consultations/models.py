@@ -19,6 +19,8 @@ class ConsultantAvailability(models.Model):
     start_time = models.TimeField()
     end_time = models.TimeField()
     is_available = models.BooleanField(default=True)
+    buffer_minutes = models.PositiveIntegerField(default=0)
+    max_bookings_per_slot = models.PositiveIntegerField(default=1)
 
     class Meta:
         unique_together = ('consultant', 'day_of_week', 'start_time', 'end_time')
@@ -31,10 +33,17 @@ class ConsultantAvailability(models.Model):
 
 class ConsultationSession(models.Model):
     STATUS_CHOICES = (
-        ('pending', 'Pending'),
-        ('confirmed', 'Confirmed'),
-        ('completed', 'Completed'),
-        ('cancelled', 'Cancelled'),
+        ('pending',              'Pending'),
+        ('awaiting_approval',    'Awaiting Approval'),
+        ('confirmed',            'Confirmed'),
+        ('reschedule_requested', 'Reschedule Requested'),
+        ('rescheduled',          'Rescheduled'),
+        ('in_progress',          'In Progress'),
+        ('completed',            'Completed'),
+        ('under_review',         'Under Review'),
+        ('payment_released',     'Payment Released'),
+        ('cancelled',            'Cancelled'),
+        ('refunded',             'Refunded'),
     )
 
     SESSION_TYPE_CHOICES = (
@@ -67,6 +76,30 @@ class ConsultationSession(models.Model):
         return f"{self.client.username} - {self.consultant.username} ({self.scheduled_date})"
 
 
+class RescheduleRequest(models.Model):
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('counter', 'Counter Proposed'),
+    )
+    session        = models.ForeignKey(ConsultationSession, on_delete=models.CASCADE, related_name='reschedule_requests')
+    requested_by   = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reschedule_requests_made')
+    new_date       = models.DateField()
+    new_start_time = models.TimeField()
+    new_end_time   = models.TimeField()
+    message        = models.TextField(blank=True)
+    status         = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at     = models.DateTimeField(auto_now_add=True)
+    updated_at     = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Reschedule for session {self.session_id} by {self.requested_by.username}"
+
+
 class ConsultantPackage(models.Model):
     SESSION_TYPE_CHOICES = (
         ('call', 'Phone Call'),
@@ -89,6 +122,22 @@ class ConsultantPackage(models.Model):
 
     def __str__(self):
         return f"{self.consultant.username} — {self.name} ({self.duration_minutes}min)"
+
+
+class ConsultantSessionRate(models.Model):
+    SESSION_TYPE_CHOICES = ConsultationSession.SESSION_TYPE_CHOICES
+
+    consultant   = models.ForeignKey(User, on_delete=models.CASCADE, related_name='session_rates')
+    session_type = models.CharField(max_length=20, choices=SESSION_TYPE_CHOICES)
+    hourly_rate  = models.DecimalField(max_digits=10, decimal_places=2)
+    is_active    = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ('consultant', 'session_type')
+        ordering = ['session_type']
+
+    def __str__(self):
+        return f"{self.consultant.username} — {self.session_type} ₹{self.hourly_rate}/hr"
 
 
 class Review(models.Model):

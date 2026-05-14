@@ -209,6 +209,8 @@ export default function Payment() {
   const { proposalId } = useParams()
   const [searchParams] = useSearchParams()
   const sessionId = searchParams.get('session')
+  const isSessionPayment = searchParams.get('type') === 'session' || !!sessionId
+  const effectiveSessionId = isSessionPayment ? (sessionId || proposalId) : null
   const { user } = useAuth()
 
   // step: 'loading' | 'review' | 'card' | 'processing' | 'escrow' | 'existing'
@@ -235,7 +237,19 @@ export default function Payment() {
 
   const loadData = async () => {
     try {
-      if (proposalId) {
+      if (isSessionPayment && effectiveSessionId) {
+        const { data } = await api.get(`/consultations/sessions/${effectiveSessionId}/`)
+        setProposal({ _session: true, ...data })
+
+        // check existing payment for this session
+        const pr = await api.get('/proposals/payments/my_payments/')
+        const existing = pr.data.find(p => p.linked_session === parseInt(effectiveSessionId))
+        if (existing) {
+          setPayment(existing)
+          setStep('existing')
+          return
+        }
+      } else if (proposalId) {
         const { data } = await api.get(`/projects/proposals/${proposalId}/`)
         setProposal(data)
 
@@ -258,7 +272,9 @@ export default function Payment() {
   const handleCalculateFees = async () => {
     setError('')
     try {
-      const payload = proposalId ? { proposal_id: proposalId } : { session_id: sessionId }
+      const payload = isSessionPayment
+        ? { session_id: effectiveSessionId }
+        : { proposal_id: proposalId }
       const { data } = await api.post('/proposals/payments/create_order/', payload)
       setFees(data.fees)
       setPaymentId(data.payment_id)
@@ -321,7 +337,9 @@ export default function Payment() {
     return (
       <div className="min-h-screen bg-gray-50 py-8 px-4">
         <div className="max-w-2xl mx-auto">
-          <Link to="/projects" className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700 mb-6">← Projects</Link>
+          <Link to={isSessionPayment ? '/dashboard' : '/projects'} className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700 mb-6">
+            ← {isSessionPayment ? 'Dashboard' : 'Projects'}
+          </Link>
 
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
             <div className="flex items-start justify-between mb-6">
@@ -415,8 +433,8 @@ export default function Payment() {
             </div>
 
             <div className="mt-4 flex gap-3">
-              <Link to="/projects" className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 text-center font-semibold">
-                Back to Projects
+              <Link to={isSessionPayment ? '/dashboard' : '/projects'} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 text-center font-semibold">
+                {isSessionPayment ? 'Back to Dashboard' : 'Back to Projects'}
               </Link>
               <Link to="/earnings" className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 rounded-xl text-sm text-white font-semibold text-center transition">
                 View Earnings
@@ -432,7 +450,9 @@ export default function Payment() {
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-3xl mx-auto">
-        <Link to="/projects" className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700 mb-6">← Projects</Link>
+        <Link to={isSessionPayment ? '/dashboard' : '/projects'} className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700 mb-6">
+          ← {isSessionPayment ? 'Dashboard' : 'Projects'}
+        </Link>
 
         {error && (
           <div className="mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-sm">{error}</div>
@@ -466,7 +486,27 @@ export default function Payment() {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <p className="text-xs font-black uppercase tracking-wide text-gray-400 mb-4">Order Summary</p>
 
-            {proposal && (
+            {proposal && proposal._session && (
+              <div className="space-y-3 mb-6">
+                <div>
+                  <p className="text-xs text-gray-400 mb-0.5">Session</p>
+                  <p className="font-semibold text-gray-900">{proposal.title}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 mb-0.5">Consultant</p>
+                  <p className="font-semibold text-gray-900">{proposal.consultant?.first_name ? `${proposal.consultant.first_name} ${proposal.consultant.last_name}` : proposal.consultant?.username}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 mb-0.5">Date & Time</p>
+                  <p className="font-semibold text-gray-900">{proposal.scheduled_date} · {proposal.start_time} – {proposal.end_time}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 mb-0.5">Session Cost</p>
+                  <p className="font-semibold text-gray-900">{fmt(proposal.session_cost)}</p>
+                </div>
+              </div>
+            )}
+            {proposal && !proposal._session && (
               <div className="space-y-3 mb-6">
                 <div>
                   <p className="text-xs text-gray-400 mb-0.5">Project</p>

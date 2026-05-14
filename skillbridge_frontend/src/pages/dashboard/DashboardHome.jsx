@@ -5,6 +5,7 @@ import {
   FaUserTie, FaUser, FaShieldHalved, FaFolderOpen,
   FaIndianRupeeSign, FaChartLine, FaCircleCheck, FaHourglass,
   FaArrowRight, FaChartPie, FaBriefcase, FaFileLines,
+  FaLock, FaReceipt,
 } from 'react-icons/fa6'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -70,10 +71,38 @@ function formatCurrency(val) {
 function buildStatCards(role, stats) {
   if (!stats) return []
   if (role === 'client') return [
-    { label: 'Active Projects', value: stats.active_projects ?? 0, icon: FaFolderOpen, color: 'text-blue-600', bg: 'bg-blue-50', trend: `${stats.projects_this_month ?? 0} this month` },
-    { label: 'Total Projects', value: stats.total_projects ?? 0, icon: FaChartLine, color: 'text-indigo-600', bg: 'bg-indigo-50', trend: `${stats.completed_projects ?? 0} completed` },
-    { label: 'Total Spent', value: formatCurrency(stats.total_spent), icon: FaIndianRupeeSign, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: `Avg ₹${Number(stats.avg_project_budget ?? 0).toLocaleString('en-IN')} / project` },
-    { label: 'Proposals Received', value: stats.total_proposals ?? 0, icon: FaHourglass, color: 'text-amber-600', bg: 'bg-amber-50', trend: `${stats.active_proposals ?? 0} pending review` },
+    {
+      label: 'Total Spent',
+      value: formatCurrency(stats.total_spent),
+      icon: FaIndianRupeeSign,
+      color: 'text-rose-600',
+      bg: 'bg-rose-50',
+      trend: `Projects: ${formatCurrency(stats.project_spent)} · Sessions: ${formatCurrency(stats.consultation_spent)}`,
+    },
+    {
+      label: 'Transactions',
+      value: stats.total_transactions ?? 0,
+      icon: FaReceipt,
+      color: 'text-blue-600',
+      bg: 'bg-blue-50',
+      trend: 'All payments',
+    },
+    {
+      label: 'In Escrow',
+      value: formatCurrency(stats.escrow_amount),
+      icon: FaLock,
+      color: 'text-amber-600',
+      bg: 'bg-amber-50',
+      trend: 'Awaiting release',
+    },
+    {
+      label: 'Released',
+      value: formatCurrency(stats.released_amount),
+      icon: FaCircleCheck,
+      color: 'text-emerald-600',
+      bg: 'bg-emerald-50',
+      trend: 'Completed payments',
+    },
   ]
   if (role === 'freelancer') return [
     { label: 'Total Proposals', value: stats.total_proposals ?? 0, icon: FaFolderOpen, color: 'text-blue-600', bg: 'bg-blue-50', trend: `${stats.proposals_this_month ?? 0} this month` },
@@ -147,7 +176,7 @@ function PanelSkeleton({ rows = 3 }) {
 }
 
 /* ─── Role-specific bottom panels ────────────────────────── */
-function ClientPanels() {
+function ClientPanels({ stats }) {
   const [consultants, setConsultants] = useState([])
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
@@ -230,6 +259,44 @@ function ClientPanels() {
           }
         </div>
       </div>
+
+      {/* Finance breakdown */}
+      {stats && (
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <div>
+              <h2 className="text-lg font-black text-slate-950">Finance Breakdown</h2>
+              <p className="mt-0.5 text-sm text-slate-500">Your payment activity across projects and sessions.</p>
+            </div>
+            <Link to="/earnings" className="flex items-center gap-1 text-xs font-black text-blue-600 hover:text-blue-700">
+              View all <FaArrowRight />
+            </Link>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {[
+              { label: 'Project Spend', value: formatCurrency(stats.project_spent), color: 'text-indigo-600', bg: 'bg-indigo-50' },
+              { label: 'Consultation Spend', value: formatCurrency(stats.consultation_spent), color: 'text-purple-600', bg: 'bg-purple-50' },
+              { label: 'In Escrow', value: formatCurrency(stats.escrow_amount), color: 'text-amber-600', bg: 'bg-amber-50' },
+              { label: 'Released', value: formatCurrency(stats.released_amount), color: 'text-emerald-600', bg: 'bg-emerald-50' },
+            ].map((item) => (
+              <div key={item.label} className={`rounded-xl p-4 ${item.bg}`}>
+                <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">{item.label}</p>
+                <p className={`mt-1 text-xl font-black ${item.color}`}>{item.value}</p>
+              </div>
+            ))}
+          </div>
+          {stats.pending_amount > 0 && (
+            <p className="mt-3 text-xs text-slate-400">
+              <span className="font-black text-amber-600">{formatCurrency(stats.pending_amount)}</span> pending processing
+            </p>
+          )}
+          <div className="mt-3 flex items-center gap-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
+            <span><span className="font-black text-slate-700">{stats.total_transactions ?? 0}</span> total transactions</span>
+            <span><span className="font-black text-slate-700">{stats.total_sessions ?? 0}</span> consultation sessions</span>
+            <span><span className="font-black text-slate-700">{stats.completed_sessions ?? 0}</span> completed</span>
+          </div>
+        </div>
+      )}
     </section>
   )
 }
@@ -635,7 +702,7 @@ function DashboardHome() {
       {['freelancer', 'consultant', 'both'].includes(role) && <RevenueChart role={role} />}
 
       {/* Role-specific panels */}
-      {role === 'client' && <ClientPanels />}
+      {role === 'client' && <ClientPanels stats={stats} />}
       {role === 'freelancer' && <FreelancerPanels />}
       {role === 'consultant' && <ConsultantPanels />}
       {role === 'both' && <BothPanels />}

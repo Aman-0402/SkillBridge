@@ -441,6 +441,9 @@ export default function Profile() {
   const [roleChoice, setRoleChoice] = useState(null)
   const [showPremiumModal, setShowPremiumModal] = useState(false)
   const [roleChanging, setRoleChanging] = useState('')
+  const [sessionRates, setSessionRates] = useState([])
+  const [rateInputs, setRateInputs] = useState({ video: '', phone: '', chat: '', in_person: '' })
+  const [ratesSaving, setRatesSaving] = useState(false)
 
   const handleRoleChange = async (newRole) => {
     if (newRole === roleChoice) return
@@ -471,7 +474,18 @@ export default function Profile() {
     }
   }
 
-  useEffect(() => { fetchProfile() }, [])
+  useEffect(() => {
+    fetchProfile()
+    if (['consultant', 'both'].includes(user?.role)) {
+      api.get('/consultations/session-rates/').then(res => {
+        const rates = Array.isArray(res.data) ? res.data : res.data.results || []
+        setSessionRates(rates)
+        const inputs = { video: '', phone: '', chat: '', in_person: '' }
+        rates.forEach(r => { inputs[r.session_type] = r.hourly_rate })
+        setRateInputs(inputs)
+      }).catch(() => {})
+    }
+  }, [])
 
   const fetchProfile = async () => {
     setLoading(true)
@@ -520,6 +534,36 @@ export default function Profile() {
       Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to load profile.' })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleSaveRates = async () => {
+    setRatesSaving(true)
+    try {
+      const SESSION_TYPES = [
+        { key: 'video', label: 'Video Call' },
+        { key: 'phone', label: 'Phone Call' },
+        { key: 'chat', label: 'Chat' },
+        { key: 'in_person', label: 'In Person' },
+      ]
+      for (const { key } of SESSION_TYPES) {
+        const rate = rateInputs[key]
+        if (!rate && rate !== 0) continue
+        const existing = sessionRates.find(r => r.session_type === key)
+        if (existing) {
+          await api.patch(`/consultations/session-rates/${existing.id}/`, { hourly_rate: rate, is_active: true })
+        } else {
+          await api.post('/consultations/session-rates/', { session_type: key, hourly_rate: rate, is_active: true })
+        }
+      }
+      const res = await api.get('/consultations/session-rates/')
+      const rates = Array.isArray(res.data) ? res.data : res.data.results || []
+      setSessionRates(rates)
+      Swal.fire({ icon: 'success', title: 'Rates saved!', timer: 1200, showConfirmButton: false })
+    } catch {
+      Swal.fire({ icon: 'error', title: 'Failed', text: 'Could not save session rates.' })
+    } finally {
+      setRatesSaving(false)
     }
   }
 
@@ -939,6 +983,49 @@ export default function Profile() {
                     <div>
                       <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-600">Response Time (hours)</label>
                       <input type="number" min="1" max="168" value={formData.response_time_hours} onChange={e => setFormData(p => ({ ...p, response_time_hours: e.target.value }))} placeholder="24" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100" />
+                    </div>
+                  </div>
+                )}
+                {/* Session Rates — consultant / both */}
+                {['consultant', 'both'].includes(user?.role) && (
+                  <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-black text-slate-950">Session Rates</p>
+                        <p className="text-xs text-slate-500">Set your hourly rate per session type. Clients see these when booking.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleSaveRates}
+                        disabled={ratesSaving}
+                        className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-black text-white transition hover:bg-blue-500 disabled:opacity-60"
+                      >
+                        {ratesSaving ? 'Saving…' : 'Save Rates'}
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { key: 'video', label: 'Video Call', icon: '📹' },
+                        { key: 'phone', label: 'Phone Call', icon: '📞' },
+                        { key: 'chat', label: 'Chat', icon: '💬' },
+                        { key: 'in_person', label: 'In Person', icon: '🤝' },
+                      ].map(({ key, label, icon }) => (
+                        <div key={key}>
+                          <label className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500">{icon} {label}</label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-black text-slate-400">₹</span>
+                            <input
+                              type="number"
+                              min="0"
+                              value={rateInputs[key]}
+                              onChange={e => setRateInputs(p => ({ ...p, [key]: e.target.value }))}
+                              placeholder="e.g. 999"
+                              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-7 pr-3 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                            />
+                          </div>
+                          <p className="mt-0.5 text-[9px] text-slate-400">/hr</p>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
